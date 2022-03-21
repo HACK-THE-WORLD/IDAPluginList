@@ -1,0 +1,41 @@
+name: AutoClone
+
+on: 
+  schedule:
+    - cron: '0 1 * * *'
+
+jobs:
+  AutoClone:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: main
+          persist-credentials: false
+
+      - name: AutoClone
+        run: |
+          pl=(https://github.com/Accenture/VulFi https://github.com/REhints/HexRaysCodeXplorer https://github.com/a1ext/auto_re https://github.com/polymorf/findcrypt-yara https://github.com/gaasedelen/patching https://github.com/keystone-engine/keypatch https://github.com/herosi/CTO https://github.com/aliyunav/Finger https://github.com/L4ys/LazyIDA)
+          # 设置Git
+          git config --local user.name "AnonymousUser"
+          git config --local user.email "you@example.com"
+          git remote set-url origin https://${{ github.actor }}:${{ secrets.ACCESS_TOKEN }}@github.com/${{ github.repository }}
+          # 循环Clone
+          for i in ${pl[*]}; do
+            OLD_IFS="$IFS"
+            IFS="/" 
+            arr=($i)
+            IFS="$OLD_IFS"
+            key=`expr ${#arr[@]} - 1`
+            dir=${arr[$key]}
+            echo $dir
+            rm -rf $dir
+            git clone $i
+            rm -rf $dir/.git/
+          done
+          # 添加
+          git add .
+          git commit -am "Update"
+          git push origin main
