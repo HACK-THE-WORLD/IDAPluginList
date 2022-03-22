@@ -1,0 +1,74 @@
+{
+    "C++ vftables": {
+        "regex": true,
+        "cs": false,
+        "rule": "(vftables|`vftable'|vtable_)",
+		"keywords": ["children", "vftables"]
+    },
+    "C++ vftables (non-standard vftable)": {
+        "regex": true,
+        "cs": false,
+        "rule": "(const (?!std::).*::`vftable'$|, offset vtable_(?!_std_))",
+		"keywords": []
+    },
+    "Possible C++ class w/o vftable": {
+        "regex": true,
+        "cs": false,
+        "rule": "\\[(r|e)..?(\\+(4|8|0Ch|[0-9A-F][0-9A-F]h|.+))?\\], offset ",
+		"keywords": ["children", "gvars"]
+    },
+    "Possible C++ vftable access on x64": {
+        "regex": true,
+        "cs": false,
+        "rule": "lea     r..?, off",
+		"keywords": ["children", "gvars"]
+    },
+    "xor instruction in a loop": {
+        "regex": false,
+        "cs": false,
+        "rule": "xorloop",
+		"keywords": []
+    },
+    "notable const value": {
+        "regex": false,
+        "cs": false,
+        "rule": "NT_CON: ",
+		"keywords": []
+    },
+    "notable mnem": {
+        "regex": false,
+        "cs": false,
+        "rule": "NT_MNEM: ",
+		"keywords": []
+    },
+    "ironstrings": {
+        "regex": false,
+        "cs": false,
+        "rule": "stackstring: ",
+		"keywords": []
+    },
+    "findcrypt.py": {
+        "regex": true,
+        "cs": true,
+        "rule": "(FC: |FC_)",
+		"keywords": []
+    },
+    "findguid.py": {
+        "regex": true,
+        "cs": true,
+        "rule": "(CLSID_|IID_|FOLDERID_|MEDIASUBTYPE_|WMFORMAT_|WMMEDIATYPE_|WMSCRIPTTYPE_)",
+		"keywords": []
+    },
+    "IDA_Signsrch": {
+        "regex": false,
+        "cs": false,
+        "rule": "#Signsrch ",
+		"keywords": []
+    },
+    "User defined tags": {
+        "regex": false,
+        "cs": true,
+        "rule": "CTO-tag: ",
+		"keywords": []
+    }
+}

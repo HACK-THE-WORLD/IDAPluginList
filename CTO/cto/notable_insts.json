@@ -1,0 +1,8 @@
+{
+    "single": {
+        "VC++ initialize basic_string": {"rule": "mov .*], 0Fh", "regex":true},
+        "VC++ initialize wchar basic_string": {"rule": "mov .*], 7(|\\s;.*)$", "regex":true}
+    },
+    "multiple":{
+    }
+}

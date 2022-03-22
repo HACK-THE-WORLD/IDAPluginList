@@ -1,0 +1,6 @@
+# How to Install
+Put "cto_plugin.py" and "cto_func_lister_plugin.py" and the "cto" folder including the files and folders under it into the "plugins" folder of IDA's user directory ($IDAUSR).
+
+See the URL if you don't know about "$IDAUSR".
+https://hex-rays.com/blog/igors-tip-of-the-week-33-idas-user-directory-idausr/
+https://www.hex-rays.com/products/ida/support/idadoc/1375.shtml

@@ -1,0 +1,25 @@
+{
+    "rcmt": {
+        "default": true,
+        "include": {},
+        "exclude": {
+            "jumptbl": "^(jumptable [0-9A-F]+ (case [0-9-]+|cases [0-9,-]+|default case|default case, cases? [0-9,-]+)\r?\n?)+$"
+        }
+    },
+    "cmt": {
+        "default": false,
+        "include": {
+            "ironstrings": "stackstring: ",
+            "findcrytp.py": "FC: ",
+            "xorloop": "CTO-xorloop",
+            "notable const value": "NT_CON: ",
+            "notable mnem": "NT_MNEM: ",
+            "xor": "CTO-xor",
+	        "IDA_Signsrch": "#Signsrch ",
+            "tag": "CTO-tag: "
+        },
+        "exclude": {
+            "stack cookie": "StackCookie"
+		}
+    }
+}

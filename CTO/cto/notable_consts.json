@@ -1,0 +1,78 @@
+{
+    "single": {
+        "0xEA60": {"name": "60 secs", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x7530": {"name": "30 secs", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x5A4D": {"name": "MZ signature", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x4550": {"name": "PE signature", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x68584d56": {"name": "VMXh", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x5856": {"name": "VX", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0xAA55": {"name": "MBR footer", "optype":[], "mnems":[], "opn":[], "opsz":[]}, 
+        "0x1be": {"name": "MBR partition entry1", "optype":[], "mnems":[], "opn":[], "opsz":[]}, 
+        "0x1bb": {"name": "https port", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x3e3": {"name": "pop3s port", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x1d1": {"name": "smtps port", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x24b": {"name": "smtp port (587)", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x1f90": {"name": "proxy port (8080)", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x8b1f": {"name": "gzip signature", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x21335541": {"name": "AutIt3.2.6+", "optype":[], "mnems":[], "opn":[], "opsz":[]}, 
+        "0x35304145": {"name": "AutIt3.2.5-", "optype":[], "mnems":[], "opn":[], "opsz":[]}, 
+        "0x36304145": {"name": "AutIt3Header", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x3D3D": {"name": "base64 padding", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0xE8": {"name": "call instruction", "optype":[], "mnems":[], "opn":[], "opsz":[1]},
+        "0xE9": {"name": "jmp instruction (long)", "optype":[], "mnems":[], "opn":[], "opsz":[1]},
+        "0xEB": {"name": "jmp instruction (short)", "optype":[], "mnems":[], "opn":[], "opsz":[1]},
+        "0xC3": {"name": "ret instruction", "optype":[], "mnems":[], "opn":[], "opsz":[1]},
+        "0x8664": {"name": "IMAGE_FILE_MACHINE_AMD64", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x555555555555555": {"name": "max list size for VC++ 2019 x64", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x83828180": {"name": "LZO_UINT32_C_LE", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+        "0x80818283": {"name": "LZO_UINT32_C_BE", "optype":[], "mnems":[], "opn":[], "opsz":[]},
+		"0x1824429d": {"name": "LZO_Compress", "optype":[], "mnems":[], "opn":[], "opsz":[]}
+    },
+    "multiple":{
+        "PE Sec": {
+            "consts":{
+                "0x3c": {"name": "e_lfanew", "optype":[], "mnems":[], "opn":[1], "opsz":[]}, 
+                "0x6": {"name": "NumberOfSections", "optype":[], "mnems":[], "opn":[1], "opsz":[]}, 
+                "0x28": {"name": "SizeOfSectionHeader", "optype":[], "mnems":["add"], "opn":[1], "opsz":[]}
+            },
+            "min": 3,
+            "require": ["0x6", "0x28", "0x3c"],
+            "max": {"0x6":2, "0x28":2, "0x3c":2}
+        },
+        "PE32 Reloc": {
+            "consts":{
+                "0x3c": {"name": "e_lfanew", "optype":[3,4], "mnems":[], "opn":[1], "opsz":[]}, 
+                "0x30": {"name": "BaseOfCode", "optype":[3,4], "mnems":["mov"], "opn":[1], "opsz":[]}, 
+                "0x34": {"name": "BaseOfCode", "optype":[3,4], "mnems":["mov"], "opn":[1], "opsz":[]}, 
+                "0xa0": {"name": "RelocationDirectory", "optype":[3,4], "mnems":["mov", "lea"], "opn":[1], "opsz":[]}, 
+                "0x8664": {"name": "IMAGE_FILE_MACHINE_AMD64", "optype":[], "mnems":[], "opn":[1], "opsz":[]},
+                "0x14C": {"name": "IMAGE_FILE_MACHINE_I386", "optype":[], "mnems":[], "opn":[1], "opsz":[]}
+            },
+            "min": 4,
+            "require": ["0xa0", "0x3c", "0x30", "0x34"],
+            "max": {"0xa0":2, "0x3c":2}
+        },
+        "PE32+ Reloc": {
+            "consts":{
+                "0x3c": {"name": "e_lfanew", "optype":[3,4], "mnems":[], "opn":[1], "opsz":[]}, 
+                "0x30": {"name": "BaseOfCode", "optype":[3,4], "mnems":["mov"], "opn":[1], "opsz":[]}, 
+                "0xB0": {"name": "RelocationDirectory", "optype":[3,4], "mnems":["mov", "lea"], "opn":[1], "opsz":[]}, 
+                "0x8664": {"name": "IMAGE_FILE_MACHINE_AMD64", "optype":[], "mnems":[], "opn":[1], "opsz":[]},
+                "0x14C": {"name": "IMAGE_FILE_MACHINE_I386", "optype":[], "mnems":[], "opn":[1], "opsz":[]}
+            },
+            "min": 3,
+            "require": ["0xb0", "0x3c", "0x30"],
+            "max": {"0xb0":2, "0x3c":2}
+        },
+        "An rc4 implementation": {
+            "consts":{
+                "0x100": {"name": "RC4", "optype":[], "mnems":[], "opn":[], "opsz":[]}, 
+                "0x800000FF": {"name": "RC4", "optype":[], "mnems":[], "opn":[], "opsz":[]}, 
+                "0xFFFFFF00": {"name": "RC4", "optype":[], "mnems":[], "opn":[], "opsz":[]}
+            },
+            "min": 3,
+            "require": ["0x100", "0x800000FF", "0xFFFFFF00"],
+            "max": {}
+        }
+    }
+}
