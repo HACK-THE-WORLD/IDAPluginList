@@ -23,3 +23,4 @@ IDA插件集合，含项目名称及项目地址。
 1. 用于创建简单高效的函数调用树图：https://github.com/herosi/CTO
 2. 识别功能符号：https://github.com/aliyunav/Finger
 3. 让你可以更加“懒惰”的使用IDA：https://github.com/L4ys/LazyIDA
+4. 使伪代码更美观：https://github.com/P4nda0s/IDABeautify
