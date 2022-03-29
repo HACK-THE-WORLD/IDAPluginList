@@ -24,3 +24,4 @@ IDA插件集合，含项目名称及项目地址。
 2. 识别功能符号：https://github.com/aliyunav/Finger
 3. 让你可以更加“懒惰”的使用IDA：https://github.com/L4ys/LazyIDA
 4. 使伪代码更美观：https://github.com/P4nda0s/IDABeautify
+5. 用于分析 Golang 二进制文件：https://github.com/SentineLabs/AlphaGolang
