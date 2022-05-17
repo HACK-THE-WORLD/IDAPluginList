@@ -11,50 +11,76 @@ ite = ida_dirtree.dirtree_iterator_t()
 ok = func_dir.findfirst(ite, "*")
 
 folders = {}
-for function in idautils.Functions():
-    name = idc.get_func_name(function)
-    folderName = ""
-    if name.startswith("_") or name.startswith("."):
-        folders.setdefault("uncategorized",[]).append(name)
-        continue
-    for i,c in enumerate(name):
-        if c == "." or c == "_": 
-            folderName = name[:i]
-            break
-    if folderName == "":
-        folderName = "uncategorized"
-    if folderName == "sub":
-        folderName = "unnamed"
-    folders.setdefault(folderName,[]).append(name)
-for folderName in folders:
+
+def create_folders():
+    for function in idautils.Functions():
+        folderName = ""
+        name = idc.get_func_name(function)
+        if name.startswith("_") or name.startswith("."):
+            folders.setdefault("uncategorized",[]).append(name)
+            continue
+        for i,c in enumerate(name):
+            if c == "." or c == "_": 
+                folderName = name[:i]
+                break
+        if folderName == "":
+            folderName = "uncategorized"
+        if folderName == "sub":
+            folderName = "unnamed"
+        folders.setdefault(folderName,[]).append(name)
+    existed = []
+    created = []
+    for folderName in folders:
+        if func_dir.isdir(folderName):
+            existed.append(folderName)
+            continue
+        else:
+            try:
+                func_dir.mkdir(folderName)
+                created.append(folderName)
+            except:
+                print("Failed to create folder: ", folderName)
+                continue
+    for folderName in existed:
+        if (folderName != "github"):
+            folders.pop(folderName)
+    for folder in created:
+        if len(folders[folder]) <= 3:
+            for func in folders[folder]:
+                folders.setdefault("uncategorized",[]).append(func)
+            folders.pop(folder)
+            func_dir.rmdir(folder)
+
+def populate_folders():
+    for folderName in folders:
+        if not func_dir.isdir(folderName):
+            print("Error: %s folder didn't exist, recreating...", folderName)
+            try:
+                func_dir.mkdir(folderName)
+            except:
+                print("Couldn't create folder: " + folderName)
+        list_of_funcs = folders[folderName]
+        for func in list_of_funcs:
+            try:
+                func_dir.rename(func, folderName+"/"+func)
+            except:
+                print("Failed to move function:", func)
+
+def nest_standard_packages():
+    common_packages = ["archive", "bufio", "builtin", "bytes", "compress", "container", "context", "crypto", "database", "debug", "embed", "encoding", "errors", "flag", "fmt", "go", "hash", "html", "image", "index", "io", "log", "math", "mime", "net", "os", "path", "plugin", "regexp", "sort", "strconv", "strings", "sync", "syscall", "testing", "text", "time", "unicode", "unsafe", "internal", "reflect", "vendor", "golang", "runtime", "type", "setg", "pthread", "walk", "gosave", "x", "cgo"]
+    folderName = "StandardGoPackages"
     try:
         func_dir.mkdir(folderName)
+        for package in common_packages:
+            try:
+                func_dir.rename(package, folderName+"/"+package)
+            except:
+                print("Failed to move standard package folder:", package)
     except:
         print("Failed to create folder: ", folderName)
-        continue
-    for name in folders[folderName]:
-        try:
-            func_dir.rename(name, folderName+"/"+name)
-            #print("Moved: "+name+" to "+folderName)
-        except:
-            print("Failed to move function:", name)
-
-common_packages = ["archive", "bufio", "builtin", "bytes", "compress", "container", "context", "crypto", "database", "debug", "embed", "encoding", "errors", "flag", "fmt", "go", "hash", "html", "image", "index", "io", "log", "math", "mime", "net", "os", "path", "plugin", "regexp", "sort", "strconv", "strings", "sync", "syscall", "testing", "text", "time", "unicode", "unsafe", "internal", "reflect", "vendor", "golang", "runtime", "type", "setg", "pthread"]
-
-folderName = "StandardGoPackages"
-
-try:
-    func_dir.mkdir(folderName)
-    for package in common_packages:
-        try:
-            func_dir.rename(package, folderName+"/"+package)
-        except:
-            print("Failed to move standard package folder:", package)
-except:
-    print("Failed to create folder: ", folderName)
 
 
-if "github" in folders:
+def github_sort():
     github_repos = {}
     for package in folders["github"]:
         repo = ""
@@ -76,3 +102,10 @@ if "github" in folders:
                 func_dir.rename("github/"+func, sub_folder+"/"+func)
             except:
                 print("Failed to move github repo:", func)
+
+create_folders()
+populate_folders()
+nest_standard_packages()
+github_sort()
+
+#Still need to handle a few stragglers from the conflicting sorting mechanism introduced in IDA 7.7 but this is much better :)

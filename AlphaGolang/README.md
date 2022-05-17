@@ -41,6 +41,8 @@ The first two steps (recreate_pclntab and function_discovery_and_renaming) will 
    - categorize_go_folders.py (Requires IDA v7.6+)
         - Automagically categorizes functions into folders
         - Requires IDAv7.6 + 'show folders' to be enabled in functions view
+		- UPDATE 05.16.2022: Fixed conflict with IDA v7.7 folder sort
+		- Highly recommend reverting metadata from Lumina before running this plugin.
 
  - ## Step 4: Fix string references
    <img src="docs/images/stringcast.gif" width="900" height="500" />
@@ -59,7 +61,6 @@ The first two steps (recreate_pclntab and function_discovery_and_renaming) will 
        - Obtains the human-readable name and adds it as a comment
 
 ### Pending fixes and room for contributions:
- - IDA 7.7 attempts a half-assed version of our folder organizing with less useful results. Step 3 doesn't produce as good results on 7.7+ and needs some sanity checks.
  - fix_string_cast.py 
         - Still needs refactoring + better string load heuristics
         - Can lead to lock up in massive binaries.

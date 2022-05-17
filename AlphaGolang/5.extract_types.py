@@ -59,27 +59,27 @@ struct golang_type
 """
 
 def find_type_structures(func_name, search_len=15):
-	"""
-	Looks for all types passed as argument to the given function. Probably only
-	works for Go > 1.15 where the register calling convention was introduced.
-	
-	func_name: The name of the function to look for (i.e. "runtime.newobject")
-	register: The register in which the required argument is passed (i.e. "eax")
-	"""
-	type_addresses = set()
-	# Find all xrefs to the given function
-	for f in Functions():
-		if ida_funcs.get_func_name(f) == func_name:
-			for ref in XrefsTo(f):
-				# Find the type argument of that function
-				for h in Heads(ref.frm - search_len, ref.frm):
-					print(f"Instruction: {hex(h)} - {print_insn_mnem(h)}")
-					if "lea" == print_insn_mnem(h) and (get_operand_type(h, 1) == o_imm or get_operand_type(h, 1) == o_mem) and (print_operand(h, 0) == "rcx" or print_operand(h, 0) == "rax"):
-						print("FOUND")
-						type_addresses.add(get_operand_value(h, 1))
-						break
-			break
-	return type_addresses
+    """
+    Looks for all types passed as argument to the given function. Probably only
+    works for Go > 1.15 where the register calling convention was introduced.
+    
+    func_name: The name of the function to look for (i.e. "runtime.newobject")
+    register: The register in which the required argument is passed (i.e. "eax")
+    """
+    type_addresses = set()
+    # Find all xrefs to the given function
+    for f in Functions():
+        if ida_funcs.get_func_name(f) == func_name:
+            for ref in XrefsTo(f):
+                # Find the type argument of that function
+                for h in Heads(ref.frm - search_len, ref.frm):
+                    print(f"Instruction: {hex(h)} - {print_insn_mnem(h)}")
+                    if "lea" == print_insn_mnem(h) and (get_operand_type(h, 1) == o_imm or get_operand_type(h, 1) == o_mem) and (print_operand(h, 0) == "rcx" or print_operand(h, 0) == "rax"):
+                        print("FOUND")
+                        type_addresses.add(get_operand_value(h, 1))
+                        break
+            break
+    return type_addresses
 
 
 def parse_type(addr):
@@ -121,10 +121,9 @@ def parse_type(addr):
 	set_name(addr, "type_" + type_str.decode(errors="replace")[:20], SN_NOCHECK | 0x800)
 	return True
 
-
 # Import the required IDA structures if necessary
 if get_struc_id("golang_type") == BADADDR:
-	parse_decls(C_HEADER, idaapi.PT_TYP)
+    parse_decls(C_HEADER, idaapi.PT_TYP)
 
 # Find all places in the binary where there is type information
 addresses  = find_type_structures("runtime.newobject")
@@ -135,5 +134,5 @@ addresses |= find_type_structures("runtime.makeslice", search_len=30)
 
 # Parse type information
 for t in addresses:
-	if not parse_type(t):
-		break  # Stop on first fatal error
+    if not parse_type(t):
+        break  # Stop on first fatal error
