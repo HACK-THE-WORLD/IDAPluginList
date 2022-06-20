@@ -25,3 +25,4 @@ IDA插件集合，含项目名称及项目地址。
 3. 让你可以更加“懒惰”的使用IDA：https://github.com/L4ys/LazyIDA
 4. 使伪代码更美观：https://github.com/P4nda0s/IDABeautify
 5. 用于分析 Golang 二进制文件：https://github.com/SentineLabs/AlphaGolang
+6. 用于解析存储在已编译二进制文件中的 GoLang 类型信息：https://github.com/sibears/IDAGolangHelper
