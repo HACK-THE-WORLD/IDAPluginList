@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="misc">
+      <UniqueIdentifier>{1e48c0cc-48b0-401f-a50c-c37324e594b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="pdb">
+      <UniqueIdentifier>{cdbcd796-682a-421a-9bf1-87cd59ddb335}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="oldpdb.h">
+      <Filter>misc</Filter>
+    </ClInclude>
+    <ClInclude Include="msdia.hpp" />
+    <ClInclude Include="pdb.hpp" />
+    <ClInclude Include="pdbaccess.hpp" />
+    <ClInclude Include="pdblocal.hpp" />
+    <ClInclude Include="pdbremote.hpp" />
+    <ClInclude Include="sip.hpp" />
+    <ClInclude Include="tilbuild.hpp" />
+    <ClInclude Include="varser.hpp" />
+    <ClInclude Include="dia2_internal.h">
+      <Filter>pdb</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="Program.h" />
+    <ClInclude Include="misc.h" />
+    <ClInclude Include="cvadd.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="common.cpp">
+      <Filter>pdb</Filter>
+    </ClCompile>
+    <ClCompile Include="old.cpp">
+      <Filter>pdb</Filter>
+    </ClCompile>
+    <ClCompile Include="pdb.cpp">
+      <Filter>pdb</Filter>
+    </ClCompile>
+    <ClCompile Include="misc.cpp" />
+    <ClCompile Include="pdblocal.cpp" />
+    <ClCompile Include="pdbremote.cpp" />
+    <ClCompile Include="sip.cpp" />
+    <ClCompile Include="tilbuild.cpp" />
+    <ClCompile Include="msdia.cpp" />
+    <ClCompile Include="Helpers.cpp" />
+    <ClCompile Include="Program.cpp" />
+    <ClCompile Include="stdafx.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="makefile">
+      <Filter>pdb</Filter>
+    </None>
+    <None Include="pdb.cfg" />
+    <None Include="packages.config" />
+  </ItemGroup>
+</Project>
