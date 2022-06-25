@@ -17,11 +17,11 @@ def get_tinfo(ea):
 #def get_tinfo_by_name(name, func_flag=True):
 def get_tinfo_by_name(name):
     tinfo = None
-    result = ida_typeinf.get_named_type(ida_typeinf.cvar.idati, name, 0)
+    result = ida_typeinf.get_named_type(ida_typeinf.get_idati(), name, 0)
 
     if result:
         tinfo = ida_typeinf.tinfo_t()
-        ret = tinfo.deserialize(ida_typeinf.cvar.idati, result[1], result[2])
+        ret = tinfo.deserialize(ida_typeinf.get_idati(), result[1], result[2])
         if not ret:
             return None
         #if ret and func_flag:
