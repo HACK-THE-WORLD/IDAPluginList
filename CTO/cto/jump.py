@@ -182,6 +182,8 @@ def jumpto_name_decomp(ea, w):
         return
     vu = ida_hexrays.get_widget_vdui(w)
     #print(vu.cfunc)
+    if vu is None:
+        return
     vu.get_current_item(ida_hexrays.USE_KEYBOARD)
     
     ea = vu.cfunc.entry_ea
@@ -288,6 +290,8 @@ def get_highlight_decomp(w):
     
     vu = ida_hexrays.get_widget_vdui(w)
     #print(vu.cfunc)
+    if vu is None:
+        return None, None
     vu.get_current_item(ida_hexrays.USE_KEYBOARD)
     
     if vu.item.is_citem():

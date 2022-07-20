@@ -688,7 +688,7 @@ class cto_base(debug_print.debug):
         
     def find_xor_loop(self):
         ida_kernwin.msg("Checking XOR instruction in a loop...%s" % (os.linesep))
-        for func_ea, ea, annotation_type in xor_loop_detector.find_xor_loop():
+        for func_ea, ea, annotation_type in xor_loop_detector.find_xor_loop(rename=True):
             ida_kernwin.msg("%x: %s, %x: %s%s" % (func_ea, annotation_type, ea, idc.generate_disasm_line(ea, 0), os.linesep))
         self.cache_cmt_update()
         self.refresh_all()
