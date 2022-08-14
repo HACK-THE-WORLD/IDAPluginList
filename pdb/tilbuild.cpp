@@ -13,12 +13,32 @@ AS_PRINTF(1, 2) inline void _ddeb(const char *format, ...)
   vmsg(format, va);
   va_end(va);
 }
+
+void dump_pdb_udt(const pdb_udt_type_data_t &udt, const char *udt_name)
+{
+  msg("PDEB: struct '%s' total_size %" FMT_Z " taudt_bits 0x%X is_union %s\n",
+      udt_name != nullptr ? udt_name : "",
+      udt.total_size,
+      udt.taudt_bits,
+      udt.is_union ? "Yes" : "No");
+  for ( int i=0; i < udt.size(); i++ )
+  {
+    const pdb_udt_member_t &zudm = udt[i];
+    msg("  %d. offset %" FMT_64 "d size %" FMT_64 "d '%s' type '%s' effalign %d tafld_bits 0x%X fda %d bit_offset %u\n",
+        i,
+        zudm.offset,
+        zudm.size,
+        zudm.name.c_str(),
+        zudm.type.dstr(),
+        zudm.effalign,
+        zudm.tafld_bits,
+        zudm.fda,
+        zudm.bit_offset);
+  }
+}
 #else
 #define ddeb(x) (void)0
-#endif
-#ifndef TESTABLE_BUILD
-#undef PDEB
-#undef PDEBSYM
+void dump_pdb_udt(const pdb_udt_type_data_t &, const char *) {}
 #endif
 
 static const char fake_vtable_type[] = "$vt";
@@ -587,6 +607,57 @@ cvt_code_t til_builder_t::verify_struct(pdb_udt_type_data_t &udt) const
 }
 
 //----------------------------------------------------------------------
+bool til_builder_t::verify_union_stem(pdb_udt_type_data_t &udt) const
+{
+  bool udt_fixed = false;
+  // at the moment there is an issue with structure with bit fields only
+  if ( udt.size() < 2 )
+    return udt_fixed;
+  for ( const pdb_udt_member_t &udm : udt )
+  {
+    if ( !udm.is_bitfield() )
+      return udt_fixed;
+  }
+
+  // stem like:
+  // 0 unsigned __int8 : 7 ZZ1 bit_offset 0
+  // 8 unsigned __int32 : 24 AllFlags bit_offset 8
+  // is collected wrongly and should be fixed.
+  // There is a bit_offset 8 inside the bitfield group,
+  // so we need to expand the type of field ZZ1
+
+  dump_pdb_udt(udt, "verify_union_stem");
+  bool udm_fixed;
+  do
+  {
+    udm_fixed = false;
+    for ( size_t i=0; i < udt.size()-1; ++i )
+    {
+      pdb_udt_member_t &udm0 = udt[i];
+      const pdb_udt_member_t &udm1 = udt[i+1];
+
+      size_t typsz0 = udm0.type.get_size();
+      size_t typsz1 = udm1.type.get_size();
+      if ( udm0.bit_offset < udm1.bit_offset
+        && udm0.offset + udm0.size <= udm1.offset
+        && typsz0 < typsz1 )
+      {
+        bitfield_type_data_t bi;
+        udm0.type.get_bitfield_details(&bi);
+        bi.nbytes = typsz1;
+        udm0.type.create_bitfield(bi);
+        udt_fixed = true;
+        udm_fixed = true;
+      }
+    }
+  } while ( udm_fixed );
+  if ( udt_fixed )
+    dump_pdb_udt(udt, "verify_union_stem FIXED");
+
+  return udt_fixed;
+}
+
+//----------------------------------------------------------------------
 // verify unions that would be created out of [p1, p2) members.
 // The [p1, p2) members are spoiled by the function.
 // Create substructures if necessary. Returns the result in out (can be the same
@@ -645,6 +716,16 @@ cvt_code_t til_builder_t::verify_union(
     qswap(best->push_back(), *q);
   }
 
+  // the stems are created artificially
+  // and some of them need to be fixed
+  // to prevent structure alignment issues
+  for ( stems_t::iterator s=stems.begin(); s != stems.end(); ++s )
+  {
+    if ( s->size() == 1 && s->begin()->offset == 0 && !s->begin()->is_bitfield() )
+      continue;
+    verify_union_stem(*s);
+  }
+
   // all non-trivial stems must be converted to structures
   for ( stems_t::iterator s=stems.begin(); s != stems.end(); ++s )
   {
@@ -653,7 +734,7 @@ cvt_code_t til_builder_t::verify_union(
 #ifdef PDEB
     msg("CREATE STEM total_size %" FMT_Z "\n", s->total_size);
     for ( pdb_udt_type_data_t::iterator p=s->begin(); p != s->end(); ++p )
-      msg("  %" FMT_64 "x %s %s\n", p->offset, p->type.dstr(), p->name.c_str());
+      msg("  %" FMT_64 "x %s %s bit_offset %u\n", p->offset, p->type.dstr(), p->name.c_str(), p->bit_offset);
 #endif
     if ( verify_struct(*s) != cvt_ok )
       return cvt_failed;
@@ -693,7 +774,7 @@ cvt_code_t til_builder_t::create_union(
 #ifdef PDEB
   msg("CREATE UNION\n");
   for ( pdb_udt_type_data_t::iterator p=p1; p != p2; ++p )
-    msg("  %" FMT_64 "x %s %s\n", p->offset, p->type.dstr(), p->name.c_str());
+    msg("  %" FMT_64 "x %s %s bit_offset %u\n", p->offset, p->type.dstr(), p->name.c_str(), p->bit_offset);
 #endif
   pdb_udt_type_data_t unimems;
   cvt_code_t code = verify_union(&unimems, p1, p2);
@@ -783,7 +864,11 @@ void pdb_udt_type_data_t::convert_to_tinfo_udt(udt_type_data_t *out)
   for ( size_t i = 0; i < size(); i++ )
   {
     udt_member_t &udm = at(i);
+#ifdef PDEB
+    out->push_back() = udm;
+#else
     out->push_back().swap(udm);
+#endif
   }
 }
 
@@ -1377,6 +1462,8 @@ cvt_code_t til_builder_t::fix_bit_union(pdb_udt_type_data_t *udt) const
 //----------------------------------------------------------------------
 cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int udtKind, const char *udt_name) const
 {
+  ddeb(("PDEB: til_builder_t::create_udt ENTRY\n"));
+  dump_pdb_udt(*udt, udt_name);
   cvt_code_t code;
   if ( udtKind == UdtUnion )
   {
@@ -1468,6 +1555,7 @@ cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int
 #if defined(TESTABLE_BUILD) && !defined(__FUZZER__)
     QASSERT(30380, !inf_test_mode() && out->get_size() == BADSIZE);
 #endif
+    dump_pdb_udt(*udt, udt_name);
     deb(IDA_DEBUG_DBGINFO, "PDB: Failed to calculate struct '%s' member alignments\n", udt_name != nullptr ? udt_name : "");
     ask_for_feedback("Failed to calculate struct member alignments");
   }

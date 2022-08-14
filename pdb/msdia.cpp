@@ -615,11 +615,11 @@ static BOOL CALLBACK SymbolServerCallback(
         ULONG64 data,
         ULONG64 context)
 {
+  bool *wait_box_shown = (bool *) context;
   switch ( action )
   {
     case SSRVACTION_SIZE:
       {
-        bool *wait_box_shown = (bool *) context;
         if ( !*wait_box_shown )
           show_wait_box("Downloading pdb...");
         *wait_box_shown = true;
@@ -627,10 +627,15 @@ static BOOL CALLBACK SymbolServerCallback(
       break;
     case SSRVACTION_QUERYCANCEL:
       {
-        //https://docs.microsoft.com/ja-jp/windows/win32/api/dbghelp/nc-dbghelp-psymbolservercallbackproc
+        //https://docs.microsoft.com/en-us/windows/win32/api/dbghelp/nc-dbghelp-psymbolservercallbackproc
         //文档说明是取消变量*data是ULONG64类型
 		ULONG64* do_cancel = (ULONG64*)data;
-		*do_cancel = user_cancelled();
+        // apparently this can arrive before SSRVACTION_SIZE
+        // so check that we did show the waitbox
+        if ( *wait_box_shown && user_cancelled() )
+          *do_cancel = TRUE;
+        else
+          *do_cancel = FALSE;
       }
       break;
     case SSRVACTION_TRACE:

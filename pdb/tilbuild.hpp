@@ -136,6 +136,7 @@ public:
         int stack_off);
   void enum_function_args(pdb_sym_t &sym, func_type_data_t &args);
   cvt_code_t verify_struct(pdb_udt_type_data_t &udt) const;
+  bool verify_union_stem(pdb_udt_type_data_t &udt) const;
   cvt_code_t fix_bit_union(pdb_udt_type_data_t *udt) const;
   cvt_code_t verify_union(
         pdb_udt_type_data_t *out,

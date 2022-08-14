@@ -1367,6 +1367,8 @@ static plugmod_t *idaapi init()
 //--------------------------------------------------------------------------
 ssize_t idaapi pdb_ctx_t::on_event(ssize_t event_id, va_list va)
 {
+  qnotused(event_id);
+  qnotused(va);
   return 0;                     // event is not processed
 }
 
