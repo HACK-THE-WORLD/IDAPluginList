@@ -27,3 +27,4 @@ IDA插件集合，含项目名称及项目地址。
 5. 用于分析 Golang 二进制文件：https://github.com/SentineLabs/AlphaGolang
 6. 用于解析存储在已编译二进制文件中的 GoLang 类型信息：https://github.com/sibears/IDAGolangHelper
 7. PDB插件修复增强：https://github.com/sonyps5201314/pdb
+8. 使用ChatGPT来帮助IDA进行反编译 https://github.com/JusticeRage/Gepetto
