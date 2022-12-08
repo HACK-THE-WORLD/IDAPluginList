@@ -8,7 +8,8 @@ Here is a simple example of what results it can provide in mere seconds:
 
 ## Setup
 
-Simply drop this script into your IDA plugins folder (`$IDAUSR/plugins`).
+Simply drop this script into your IDA plugins folder (`$IDAUSR/plugins`). By default, on Windows, this should be
+`%AppData%\Hex-Rays\IDA Pro\plugins` (you may need to create the folder).
 
 You will need to add the required packages to IDA's Python installation for the script to work.
 Find which interpreter IDA is using by checking the following registry key: 
@@ -20,7 +21,7 @@ Finally, with the corresponding interpreter, simply run:
 ```
 
 ⚠️ You will also need to edit the script and add your own API key, which can be found on [this page](https://beta.openai.com/account/api-keys).
-Please note that davinci-003 queries are not free (although not very expensive) and you will need to setup a payment method.
+Please note that davinci-003 queries are not free (although not very expensive) and you will need to set up a payment method.
 
 ## Usage
 
