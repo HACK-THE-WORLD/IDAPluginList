@@ -835,7 +835,7 @@ def get_xrefs_in_range(ea=idc.get_inf_attr(idc.INF_MIN_EA), max_ea=idc.get_inf_a
     if ida_bytes.has_xref(flags):
         yield ea
         
-    #print(hex(ea))
+    #print(hex(ea), hex(max_ea))
     if ea == ida_idaapi.BADADDR:
         return
     next_ea = ida_bytes.next_that(ea, max_ea, ida_bytes.has_xref)
@@ -851,6 +851,8 @@ def _get_drefs_to(ea):
 
 def get_drefs_to(ea):
     ea = ida_bytes.get_item_head(ea)
+    if ea >= idc.get_inf_attr(idc.INF_MAX_EA):
+        return
     item_sz = ida_bytes.get_item_size(ea)
     # for getting in the middle of the xrefs of a structure
     for next_ea in get_xrefs_in_range(ea, ea+item_sz):
@@ -865,6 +867,8 @@ def _get_drefs_from(ea):
 
 def get_drefs_from(ea):
     ea = ida_bytes.get_item_head(ea)
+    if ea >= idc.get_inf_attr(idc.INF_MAX_EA):
+        return
     item_sz = ida_bytes.get_item_size(ea)
     # for getting in the middle of the xrefs of a structure
     for next_ea in get_xrefs_in_range(ea, ea+item_sz):
