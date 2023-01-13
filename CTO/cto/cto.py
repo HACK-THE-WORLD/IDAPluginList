@@ -789,7 +789,7 @@ class CallTreeOverviewer(cto_base.cto_base, ida_graph.GraphViewer):
             
             # if it has a subgraph or the parent graph, they need to be refreshed
             # and select the primary node. Otherwise, IDA will crash if a node
-            # is disappeard in a case such as disablling global nodes.
+            # is disappeared in a case such as disablling global nodes.
             if self.parent:
                     
                 self.parent.use_internal_function_cache = use_cache
@@ -2242,7 +2242,7 @@ class CallTreeOverviewer(cto_base.cto_base, ida_graph.GraphViewer):
             self.refresh_with_center_node()
             self.exec_ui_action("EmptyStack")
             ida_kernwin.msg("cOmments %sabled%s" % ("en" if self.config.show_comment_nodes else "dis", os.linesep))
-        # show unresolved Indrect calls
+        # show unresolved Indirect calls
         elif c == 'I' and state == 0:
             self.config.show_indirect_calls = not self.config.show_indirect_calls
             self.use_internal_function_cache = False
