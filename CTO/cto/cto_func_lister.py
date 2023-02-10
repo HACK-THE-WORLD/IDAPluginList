@@ -1215,7 +1215,7 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
             self.check_and_add_cmt()
         # apply structure
         elif c == 'T' and state == 0:
-            self.check_and_apply_strunct()
+            self.check_and_apply_struct()
         # show xrefs to
         elif c == 'X' and state == 0:
             self.check_xrefs()

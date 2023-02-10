@@ -13,9 +13,10 @@
             "findcrytp.py": "FC: ",
             "xorloop": "CTO-xorloop",
             "notable const value": "NT_CON: ",
+            "notable instruction": "NT_INST: ",
             "notable mnem": "NT_MNEM: ",
             "xor": "CTO-xor",
-	        "IDA_Signsrch": "#Signsrch ",
+            "IDA_Signsrch": "#Signsrch ",
             "tag": "CTO-tag: "
         },
         "exclude": {

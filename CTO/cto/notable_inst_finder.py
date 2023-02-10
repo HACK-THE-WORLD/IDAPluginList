@@ -23,7 +23,7 @@ class notable_inst_t(object):
                     self.insts[rule_type][rule_name] = insts[rule_type][rule_name]
             else:
                 pass
-        print(self.insts)
+        #print(self.insts)
         self.cmt_prefix = cmt_prefix
         
     @staticmethod

@@ -3,72 +3,84 @@
         "regex": true,
         "cs": false,
         "rule": "(vftables|`vftable'|vtable_)",
-		"keywords": ["children", "vftables"]
+        "keywords": ["children", "vftables"]
     },
     "C++ vftables (non-standard vftable)": {
         "regex": true,
         "cs": false,
         "rule": "(const (?!std::).*::`vftable'$|, offset vtable_(?!_std_))",
-		"keywords": []
+        "keywords": []
     },
-    "Possible C++ class w/o vftable": {
+    "Possible C++ vftable access on x86": {
         "regex": true,
         "cs": false,
         "rule": "\\[(r|e)..?(\\+(4|8|0Ch|[0-9A-F][0-9A-F]h|.+))?\\], offset ",
-		"keywords": ["children", "gvars"]
+        "keywords": ["children", "gvars"]
     },
     "Possible C++ vftable access on x64": {
         "regex": true,
         "cs": false,
         "rule": "lea     r..?, off",
-		"keywords": ["children", "gvars"]
+        "keywords": ["children", "gvars"]
+    },
+    "operator new": {
+        "regex": true,
+        "cs": false,
+        "rule": "operator new(\\[\\])?\\(",
+        "keywords": ["children"]
     },
     "xor instruction in a loop": {
         "regex": false,
         "cs": false,
-        "rule": "xorloop",
-		"keywords": []
+        "rule": "CTO-xorloop",
+        "keywords": ["cmt"]
     },
     "notable const value": {
         "regex": false,
         "cs": false,
         "rule": "NT_CON: ",
-		"keywords": []
+        "keywords": ["cmt"]
+    },
+    "notable instruction": {
+        "regex": false,
+        "cs": false,
+        "rule": "NT_INST: ",
+        "keywords": ["cmt"]
     },
     "notable mnem": {
         "regex": false,
         "cs": false,
         "rule": "NT_MNEM: ",
-		"keywords": []
+        "keywords": ["cmt"]
     },
     "ironstrings": {
         "regex": false,
         "cs": false,
         "rule": "stackstring: ",
-		"keywords": []
+        "keywords": ["cmt"]
     },
     "findcrypt.py": {
         "regex": true,
         "cs": true,
         "rule": "(FC: |FC_)",
-		"keywords": []
+        "keywords": []
     },
     "findguid.py": {
         "regex": true,
         "cs": true,
         "rule": "(CLSID_|IID_|FOLDERID_|MEDIASUBTYPE_|WMFORMAT_|WMMEDIATYPE_|WMSCRIPTTYPE_)",
-		"keywords": []
+        "keywords": []
     },
     "IDA_Signsrch": {
         "regex": false,
         "cs": false,
         "rule": "#Signsrch ",
-		"keywords": []
+        "keywords": []
     },
     "User defined tags": {
         "regex": false,
         "cs": true,
         "rule": "CTO-tag: ",
-		"keywords": []
+        "keywords": []
     }
 }

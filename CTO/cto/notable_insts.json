@@ -1,7 +1,9 @@
 {
     "single": {
-        "VC++ initialize basic_string": {"rule": "mov .*], 0Fh", "regex":true},
-        "VC++ initialize wchar basic_string": {"rule": "mov .*], 7(|\\s;.*)$", "regex":true}
+        "VC++ basic_string<char> initialization": {"rule": "mov +(\\[[re][bs]p|qword ptr \\[r..?|dword ptr \\[e..).*\\], 0Fh", "regex":true},
+        "VC++ basic_string<wchar_t> initialization": {"rule": "mov +(\\[[re][bs]p|qword ptr \\[r..?|dword ptr \\[e..).*\\], 7(|\\s;.*)$", "regex":true},
+        "VC++ basic_string<char>.c_str()": {"rule": "cmp +(dword ptr \\[e.+\\]|qword ptr \\[r.+\\]|\\[r[bs]p.+\\]), 10h", "regex":true},
+        "VC++ basic_string<wchar_t>.c_str()": {"rule": "cmp +(dword ptr \\[e.+\\]|qword ptr \\[r.+\\]|\\[r[bs]p.+\\]), 8(|\\s;.*)$", "regex":true}
     },
     "multiple":{
     }

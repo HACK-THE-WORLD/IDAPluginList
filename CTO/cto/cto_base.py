@@ -494,16 +494,16 @@ class cto_base(debug_print.debug):
             self.refresh_all(ea, center=True)
         return True
             
-    def check_and_apply_strunct(self):
+    def check_and_apply_struct(self):
         flag = True
         w, wt = self.get_widget()
         if wt == ida_kernwin.BWN_DISASM:
-            flag = self.check_and_apply_strunct_ida()
+            flag = self.check_and_apply_struct_ida()
         elif wt == ida_kernwin.BWN_PSEUDOCODE:
             pass
         return flag
     
-    def check_and_apply_strunct_ida(self):
+    def check_and_apply_struct_ida(self):
         # apply structure
         ea = ida_kernwin.get_screen_ea()
         line = ida_kernwin.get_curline()
