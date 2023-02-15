@@ -53,6 +53,7 @@ FT_VTB = get_func_relation.FT_VTB
 
 class cto_base(debug_print.debug):
     orig_title = "CTO"
+    title = orig_title
     
     def __init__(self, cto_data=None, curr_view=None, debug=False):
         #super(cto_base, self).__init__(debug)
@@ -689,15 +690,15 @@ class cto_base(debug_print.debug):
     def find_xor_loop(self):
         ida_kernwin.msg("Checking XOR instruction in a loop...%s" % (os.linesep))
         for func_ea, ea, annotation_type in xor_loop_detector.find_xor_loop(rename=True):
-            ida_kernwin.msg("%x: %s, %x: %s%s" % (func_ea, annotation_type, ea, idc.generate_disasm_line(ea, 0), os.linesep))
+            ida_kernwin.msg("%x %s: %s, %x: %s%s" % (func_ea, idc.get_name(func_ea), annotation_type, ea, idc.generate_disasm_line(ea, 0), os.linesep))
         self.cache_cmt_update()
         self.refresh_all()
 
     def find_notable_mnem(self):
         ida_kernwin.msg("Checking notable mnemonics...%s" % (os.linesep))
         c = notable_mnem_finder.notable_mnem_t()
-        for ea, mnem_type, dst_ea in c.mnem_handlers():
-            ida_kernwin.msg("%x: %s, %x%s" % (ea, mnem_type, dst_ea, os.linesep))
+        for func_ea, ea, mnem_type, dst_ea in c.mnem_handlers():
+            ida_kernwin.msg("%x %s: %x: %s, %x%s" % (func_ea, idc.get_name(func_ea), ea, mnem_type, dst_ea, os.linesep))
         self.cache_cmt_update()
         self.refresh_all()
         
@@ -705,15 +706,15 @@ class cto_base(debug_print.debug):
         ida_kernwin.msg("Checking notable immediate values...%s" % (os.linesep))
         c = notable_const_finder.notable_const_t()
         for func_ea, const_ea, val, rule_name in c.collect_notable_consts():
-            ida_kernwin.msg("%x %x, %x, %s%s" % (func_ea, const_ea, val, rule_name, os.linesep))
+            ida_kernwin.msg("%x %s: %x, %x, %s%s" % (func_ea, idc.get_name(func_ea), const_ea, val, rule_name, os.linesep))
         self.cache_cmt_update()
         self.refresh_all()
         
     def find_notable_inst(self):
         ida_kernwin.msg("Checking notable instructions...%s" % (os.linesep))
         i = notable_inst_finder.notable_inst_t()
-        for inst_ea, rule_name, disasm in i.collect_notable_insts():
-            ida_kernwin.msg("%x: %s: %s%s" % (inst_ea, rule_name, disasm, os.linesep))
+        for func_ea, inst_ea, rule_name, disasm in i.collect_notable_insts():
+            ida_kernwin.msg("%x %s: %x: %s: %s%s" % (func_ea, idc.get_name(func_ea), inst_ea, rule_name, disasm, os.linesep))
         self.cache_cmt_update()
         self.refresh_all()
         
@@ -722,7 +723,7 @@ class cto_base(debug_print.debug):
             icon_data = self.icon.icon_data
         if w is None:
             w = self.GetWidget()
-        return self.icon.change_widget_icon(w, icon_data, bg_change)
+        return self.icon.change_widget_icon(w, icon_data, bg_change, title=self.title)
         
     @staticmethod
     def get_main_window():

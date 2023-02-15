@@ -57,12 +57,16 @@ class notable_inst_t(object):
         for inst_ea, rule_name in self.get_notable_insts():
             self.set_cmt(inst_ea, rule_name)
             disasm = idc.generate_disasm_line(inst_ea, 0)
-            yield inst_ea, rule_name, disasm
+            f = ida_funcs.get_func(inst_ea)
+            func_ea = idc.BADADDR
+            if f:
+                func_ea = f.start_ea
+            yield func_ea, inst_ea, rule_name, disasm
 
 def main():
     i = notable_inst_t()
-    for inst_ea, rule_name, disasm in i.collect_notable_insts():
-        print("%x: %s: %s" % (inst_ea, rule_name, disasm))
+    for func_ea, inst_ea, rule_name, disasm in i.collect_notable_insts():
+        print("%x %s: %x: %s: %s" % (func_ea, idc.get_name(func_ea), inst_ea, rule_name, disasm))
 
 if __name__ == "__main__":
     main()

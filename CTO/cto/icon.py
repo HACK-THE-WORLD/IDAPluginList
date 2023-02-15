@@ -2,6 +2,8 @@ import ida_kernwin
 
 import codecs
 
+import qtutils
+
 g_icon_data_ascii = (
     b"89504E470D0A1A0A0000000D4948445200000020000000200806000000737A7A",
     b"F4000000097048597300000EC300000EC301C76FA8640000001974455874536F",
@@ -86,7 +88,7 @@ class icon_handler(object):
         return pixmap
 
     @staticmethod
-    def change_widget_icon(w, icon_data, bg_change=False, max_try=100):
+    def change_widget_icon(w, icon_data, bg_change=False, max_try=100, title=None):
         if w is None:
             return False
             
@@ -105,18 +107,8 @@ class icon_handler(object):
         if pixmap:
             icon = QtGui.QIcon(pixmap)
             
-            # find the widget
-            widget = sip.wrapinstance(int(w), QtWidgets.QWidget)
-            find_flag = False
-            i = 0
-            while i < max_try and widget and type(widget) != QtWidgets.QMainWindow:
-                if type(widget) == QtWidgets.QWidget:
-                    find_flag = True
-                    break
-                widget = widget.parent()
-                i += 1
-            
-            if not find_flag:
+            widget = qtutils.get_widget(w, title=title)
+            if widget is None:
                 return False
             widget.setWindowIcon(icon)
         else:

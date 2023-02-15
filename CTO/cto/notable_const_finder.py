@@ -233,7 +233,7 @@ class notable_const_t(object):
 def main():
     c = notable_const_t()
     for func_ea, const_ea, val, rule_name in c.collect_notable_consts():
-        print("%x %x, %x, %s" % (func_ea, const_ea, val, rule_name))
+        print("%x %s: %x, %x, %s" % (func_ea, idc.get_name(func_ea), const_ea, val, rule_name))
 
 if __name__ == "__main__":
     main()

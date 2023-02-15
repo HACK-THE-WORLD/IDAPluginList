@@ -12,6 +12,36 @@ def can_use_qt():
     return True
     
 
+def get_qver():
+    from PyQt5 import QtCore
+    v = QtCore.qVersion()
+    maj, mnr, _ =[int(x) for x in v.split(".")]
+    return maj, mnr
+
+def get_widget(w, widget_types=None, title=None, max_try=100):
+    
+    import sip
+    from PyQt5 import QtWidgets
+    
+    if widget_types is None:
+        widget_types = set([QtWidgets.QWidget,QtWidgets.QSplitter])
+        
+    widget = sip.wrapinstance(int(w), QtWidgets.QWidget)
+    i = 0
+    while i < max_try and widget and type(widget) != QtWidgets.QMainWindow:
+        if type(widget) in widget_types:
+            #print(widget.windowTitle(), type(widget))
+            if title is not None:
+                if title == widget.windowTitle():
+                    find_flag = True
+                    break
+            else:
+                find_flag = True
+                break
+        widget = widget.parent()
+        i += 1
+    return widget
+
 def get_qmain_window(w, max_try = 100):
     if not can_use_qt():
         return None

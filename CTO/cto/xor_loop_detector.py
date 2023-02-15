@@ -92,7 +92,7 @@ def find_xor_loop(xor=False, comment=True, rename=False, cmt_prefix="CTO-"):
 
 def main():
     for func_ea, ea, annotation_type in find_xor_loop():
-        print("%x: %s, %x: %s" % (func_ea, annotation_type, ea, idc.generate_disasm_line(ea, 0)))
+        print("%x %s: %s, %x: %s" % (func_ea, idc.get_name(func_ea), annotation_type, ea, idc.generate_disasm_line(ea, 0)))
 
 if __name__ == '__main__':
     main()

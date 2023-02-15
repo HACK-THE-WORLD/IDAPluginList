@@ -442,7 +442,7 @@ def get_str(ea, v, string_eas):
             data = ""
         #print("%x" % v, ln, lnnum, keyidx)
         # for susan rtti script
-        elif n.startswith("vtable_"):
+        elif n.startswith("vtable_") or n.startswith("vftable_") or n.startswith("vtbl_") or n.endswith("_vtbl"):
             data_type = FT_VTB
             data = ""
         else:
@@ -480,9 +480,24 @@ def get_funcptr_ea(ea, bbs, import_eas, string_eas):
         elif optype in [ida_ua.o_imm]:
             # flags > 0 means that it is not just a value, but ea.
             if flags > 0 and not is_ea_in_func(v, bbs):
+                target_ea = get_offset_fptr(v)
                 if ida_bytes.is_code(flags):
                     target_ea = v
                     func_type = get_func_type(target_ea, import_eas, func_type)
+                    yield target_ea, func_type, i, func_name
+                # mov     dword ptr [esi], offset off_404370 -> sub_xxxxxxxxxxxx
+                elif target_ea != ida_idaapi.BADADDR and target_ea != v:
+                    ln, lnnum, keyidx = jump.get_line_no(v, "::`vftable'", chk_cmt=True)
+                    n = ida_name.get_name(v)
+                    if ln:
+                        target_ea = v
+                        func_type = FT_VTB
+                    # for susan rtti script
+                    elif n.startswith("vtable_") or n.startswith("vftable_") or n.startswith("vtbl_") or n.endswith("_vtbl"):
+                        target_ea = v
+                        func_type = FT_VTB
+                    if func_type == FT_UNK:
+                        func_type = get_func_type(target_ea, import_eas, func_type, offset=True)
                     yield target_ea, func_type, i, func_name
                 # for static/global variables or strings or vftable
                 elif not ida_bytes.is_code(flags):
@@ -525,7 +540,7 @@ def get_funcptr_ea(ea, bbs, import_eas, string_eas):
                         target_ea = v
                         func_type = FT_VTB
                     # for susan rtti script
-                    elif n.startswith("vtable_"):
+                    elif n.startswith("vtable_") or n.startswith("vftable_") or n.startswith("vtbl_") or n.endswith("_vtbl"):
                         target_ea = v
                         func_type = FT_VTB
                     if func_type == FT_UNK:
@@ -695,9 +710,14 @@ def get_vtbl_methods(target_ea, vtbl):
     prev_target_ea = target_ea
     item_diff = 8
     seg = ida_segment.getseg(target_ea)
+    next_name_ea = idc.get_inf_attr(idc.INF_MAX_EA)
     if seg:
         item_diff = 1<<(seg.bitness+1)
-    while target_ea != ida_idaapi.BADADDR:
+        # get next label that has a xref
+        next_name_ea = ida_bytes.next_that(target_ea, seg.end_ea, ida_bytes.has_xref)
+        if next_name_ea == ida_idaapi.BADADDR:
+            next_name_ea = seg.end_ea
+    while target_ea != ida_idaapi.BADADDR and target_ea < next_name_ea:
         flags = ida_bytes.get_full_flags(ea)
         if ida_bytes.is_code(flags):
             yield target_ea, ea

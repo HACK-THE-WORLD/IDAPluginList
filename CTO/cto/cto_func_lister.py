@@ -22,12 +22,14 @@ import time
 
 import cto_base
 import syncui
+import qtutils
 import cto_utils
 import icon
 #import cto
 import get_func_relation
 ida_idaapi.require("cto_base")
 ida_idaapi.require("syncui")
+ida_idaapi.require("qtutils")
 ida_idaapi.require("cto_utils")
 ida_idaapi.require("icon")
 #ida_idaapi.require("cto")
@@ -80,13 +82,6 @@ class MyFilterProxyModel(QtCore.QSortFilterProxyModel):
         except ValueError:
             return leftData < rightData
         
-    """
-    # for incremental filtering
-    def ___index__(self):
-        #super(MyFilterProxyModel, self).__index__(self)
-        super(MyFilterProxyModel, self).__index__()
-    """
-        
     # for incremental filtering
     def _filterAcceptsRow(self, row, parent):
         res = super(MyFilterProxyModel, self).filterAcceptsRow(row, parent)
@@ -115,7 +110,7 @@ class MyFilterProxyModel(QtCore.QSortFilterProxyModel):
         return res
 
 class limit_keywords_dialog(QtWidgets.QDialog):
-    state_changed = QtCore.pyqtSignal()
+    state_changed = QtCore.pyqtSignal(str)
     def __init__(self, parent=None):
         super().__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -148,7 +143,7 @@ class limit_keywords_dialog(QtWidgets.QDialog):
                     self.keywords[k] = True
                 else:
                     self.keywords[k] = False
-        self.state_changed.emit()
+        self.state_changed.emit("")
     
 class MyWidget(QtWidgets.QTreeView):
     key_pressed = QtCore.pyqtSignal(QtGui.QKeyEvent)
@@ -156,6 +151,7 @@ class MyWidget(QtWidgets.QTreeView):
     state_changed = QtCore.pyqtSignal(str)
     after_filtered = QtCore.pyqtSignal(str)
     item_changed = QtCore.pyqtSignal(QtCore.QModelIndex, str, str)
+    builtin_exec = QtCore.pyqtSignal(str)
     
     def __init__(self):
         #super(MyWidget, self).__init__(self)
@@ -165,6 +161,8 @@ class MyWidget(QtWidgets.QTreeView):
         self.h = limit_keywords_dialog()
         self.timer = QtCore.QTimer()
         self.wait_msec = 300
+
+        self.qt_ver = qtutils.get_qver()
         
         self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         
@@ -179,23 +177,27 @@ class MyWidget(QtWidgets.QTreeView):
         self.model.setHorizontalHeaderLabels(['Name','Address', 'CRefs', 'BBs'])
         
         # set proxy model for filter
-        self.proxy_model = MyFilterProxyModel()
+        if (self.qt_ver[0] >= 5 and self.qt_ver[1] >= 10) or self.qt_ver >= 6:
+            self.proxy_model = QtCore.QSortFilterProxyModel()
+            # the option is available only 5.10 and above
+            self.proxy_model.setRecursiveFilteringEnabled(True)
+        else:
+            self.proxy_model = MyFilterProxyModel()
+        # cange the filter method according to the version
+        if (self.qt_ver[0] >= 5 and self.qt_ver[1] >= 12) or self.qt_ver >= 6:
+            self.filterChanged = self._filterChanged_512
+        else:
+            self.filterChanged = self._filterChanged
+        
         # check all columns
         self.proxy_model.setFilterKeyColumn(-1)
-        """
-        self.proxy_model = QtCore.QSortFilterProxyModel()
-        try:
-            # the option is available only 5.10 and above
-            self.proxy_model.setRecursiveFiltering(True)
-        except AttributeError:
-            self.proxy_model = MyFilterProxyModel()
-        """
 
         # connect tree view with source item model through proxy model
         self.setModel(self.proxy_model)
         self.proxy_model.setSourceModel(self.model)
-        self.proxy_model.itemDataChanged.connect(self.handleItemDataChanged)
-
+        if self.qt_ver[0] == 5 and self.qt_ver[1] < 12:
+            self.proxy_model.itemDataChanged.connect(self.handleItemDataChanged)
+        
         # set selection model for synchronizing with ida
         self.sel_model = QtCore.QItemSelectionModel(self.proxy_model)
         self.setSelectionModel(self.sel_model)
@@ -226,6 +228,7 @@ class MyWidget(QtWidgets.QTreeView):
         self.filter_menu.addAction("Collpapse all", self.collapseAll)
         self.filter_menu.addAction("Limit keywords", lambda a=self.keywords: self.h.init_data_and_show(a))
         preset_filter = self.filter_menu.addMenu("Preset filters")
+        builtin_scripts = self.filter_menu.addMenu("Built-in scripts")
         
         # load preset filters
         preset_rule_file = os.path.join(os.path.dirname(__file__),"lister_filter.json")
@@ -240,6 +243,18 @@ class MyWidget(QtWidgets.QTreeView):
             keywords = self.preset_rules[r]["keywords"]
             # I need a lambda here to pass the arguments to the action, although default arguments of lambda are not recommended.
             preset_filter.addAction(r, lambda a=rule, b=regex_flag, c=cs_flag, d=keywords: self.set_filter_rule(a,b,c,d))
+            
+        # add built-in command
+        builtin_scripts.addAction("Find xor instructions in a loop", lambda a="xorloop": self.builtin_exec_submitter(a))
+        builtin_scripts.addAction("Find notable mnemonics", lambda a="mnem": self.builtin_exec_submitter(a))
+        builtin_scripts.addAction("Find notable instructions", lambda a="inst": self.builtin_exec_submitter(a))
+        builtin_scripts.addAction("Find notable constants", lambda a="const": self.builtin_exec_submitter(a))
+        builtin_scripts.addAction("Update cache", lambda a="cache": self.builtin_exec_submitter(a))
+        builtin_scripts.addAction("Update cache partially", lambda a="partial": self.builtin_exec_submitter(a))
+        builtin_scripts.addAction("Update cache for comments", lambda a="comments": self.builtin_exec_submitter(a))
+        builtin_scripts.addAction("Show help", lambda a="help": self.builtin_exec_submitter(a))
+        
+        # set the menu button to the filter menu
         self.menu_btn.setMenu(self.filter_menu)
         
         # Create parent widget
@@ -280,6 +295,9 @@ class MyWidget(QtWidgets.QTreeView):
         self.clear_btn.setFixedWidth(25)
         self.menu_btn.setContentsMargins(0,0,0,0)
         self.menu_btn.setFixedWidth(20)
+
+    def builtin_exec_submitter(self, script_name):
+        self.builtin_exec.emit(script_name)
         
     # action for filter preset
     @QtCore.pyqtSlot(str, bool, bool, list)
@@ -426,7 +444,18 @@ class MyWidget(QtWidgets.QTreeView):
         self.timer.setSingleShot(True)
         self.timer.start(self.wait_msec)
         
+    # this will be overwritten in the constructor when a class instance is created.
     def filterChanged(self, text):
+        self._filterChanged(text)
+        
+    # setFilterRegularExpression is only supported since >= 5.12.
+    # That's why I use QRegExp above instead of using QRegularExpression.
+    # Unoforgunately, I cannot use full PCRE featrure such as negative
+    # lookbehind ((?<!s)t) because of the version and the API in that case.
+    # https://www.regular-expressions.info/refadv.html
+    # https://www.debuggex.com/
+    # https://www.regexpal.com/
+    def _filterChanged(self, text):
         #print("Filter triggered. (%s)" % text)
         
         # if many tree items are expanded, it will take a long time. So Collapes them first.
@@ -453,16 +482,7 @@ class MyWidget(QtWidgets.QTreeView):
         
         self.after_filtered.emit(text)
         
-    """
-    # Currently setFilterRegularExpression is not supported yet. (>= 5.12)
-    # That's why I use QRegExp instead of using QRegularExpression above.
-    # Unoforgunately, I cannot use full PCRE featrure such as negative
-    # lookbehind ((?<!s)t) because of the version and the API.
-    # https://www.regular-expressions.info/refadv.html
-    # https://www.debuggex.com/
-    # https://www.regexpal.com/
-    #
-    def filterChanged(self, text):
+    def _filterChanged_512(self, text):
         #print("Filter triggered. (%s)" % text)
         
         # if many tree items are expanded, it will take a long time. So Collapes them first.
@@ -487,7 +507,6 @@ class MyWidget(QtWidgets.QTreeView):
             self.proxy_model.setFilterFixedString(text)
         
         self.after_filtered.emit(text)
-"""
         
 class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
     imports = {}
@@ -1075,14 +1094,13 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
         idx = self.tree.indexAt(event)
         #print("right-click")
 
-        """
+        # install CTO's finding path from/to node
         cto_inst = None
         for i in self.cto_data['insts']:
             # here, I don't wny but type(i) and isinstance and i.__class__
             # aren't match with the class. That's why compare these strings here.
-            if str(type(i)) == str(cto.CallTreeOverviewer):
+            if str(type(i)) == "<class 'cto.CallTreeOverviewer'>":
                 if i.parent is None:
-                    print("found cto")
                     cto_inst = i
                     break
         act_dict = {}
@@ -1094,10 +1112,9 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
                 act = cmenu.addAction(act_text)
                 act_dict[act] = cto_inst.path_finder_by_ea(cto_inst, skip, actname)
         
-        action = cmenu.exec_(self.tree.mapToGlobal(event))
+        action = cmenu.exec(self.tree.mapToGlobal(event))
         if action in act_dict:
             act_dict[action].activate(None)
-        """
         
         """
         #newAct = cmenu.addAction("New")
@@ -1111,26 +1128,7 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
         elif action == opnAct:
             print("open")
         """
-            
-    def get_qwidget(self, w, max_try=100):
-        r = None
-        # find the widget
-        widget = sip.wrapinstance(int(w), QtWidgets.QWidget)
-        find_flag = False
-        i = 0
-        while i < max_try and widget and type(widget) != QtWidgets.QMainWindow:
-            if type(widget) == QtWidgets.QWidget:
-                find_flag = True
-                break
-            widget = widget.parent()
-            i += 1
         
-        if not find_flag:
-            return r
-        else:
-            r = widget
-        return r
-    
     def on_key_pressed(self, key_event):
         # for state
         SHIFT = QtCore.Qt.SHIFT
@@ -1139,6 +1137,9 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
         ESC_KEY = QtCore.Qt.Key_Escape
         ENTER_KEY = QtCore.Qt.Key_Enter
         RETURN_KEY = QtCore.Qt.Key_Return
+        TAB_KEY = QtCore.Qt.Key_Tab
+        F5_KEY = QtCore.Qt.Key_F5
+        SPACE_KEY = QtCore.Qt.Key_Space
         
         if self.config.debug: self.dbg_print('key pressed: %x, %x' % (key_event.key(), int(key_event.modifiers())))
         key = key_event.key()
@@ -1199,6 +1200,15 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
             self.refresh()
             ida_kernwin.msg("darK mode %sabled%s" % ("en" if self.config.dark_mode else "dis", os.linesep))
             """
+        # toggle ida-view and text view
+        elif c == ' ' and state == 0:
+            self.exec_ida_ui_action("ToggleRenderer")
+        # launch decompiler
+        elif key == TAB_KEY and state == 0:
+            self.exec_ida_ui_action("hx:JumpPseudo")
+        # launch decompiler
+        elif key == F5_KEY and state == 0:
+            self.exec_ida_ui_action("hx:GenPseudo")
         # go to an address or an address of a function name
         elif c == 'G' and state == 0:
             self.exec_ida_ui_action("JumpAsk")
@@ -1256,6 +1266,9 @@ Shift+U: Update function relationships partially. It updates only the node on th
 Ctrl+U: Update all comment caches. This is useful for collecting some tools'a results such as
    ironstrings and findcrypt.py.
 N: reName a function (this option redirects to IDA View-A so that you can use it transparently).
+ : (Space bar) toggle graph-view and text-view
+F5: decompile a function
+TAB: launch decompiler
 G: Go to a place (this option redirects to IDA View-A so that you can use it transparently).
 X: display Xrefs (this option redirects to IDA View-A so that you can use it transparently).
 T: apply a sTructure member to an operand (this option redirects to IDA View-A so that
@@ -1273,6 +1286,33 @@ Ctrl+Enter: Move forward  of the IDA's location history.
 Ctrl+F: display/hide Filter bar.
 D: enable/disable Debug mode
 """)
+        
+    def builtin_exec(self, script):
+        if script == 'xorloop':
+            self.find_xor_loop()
+        elif script == 'mnem':
+            self.find_notable_mnem()
+        elif script == 'inst':
+            self.find_notable_inst()
+        elif script == 'const':
+            self.find_notable_const()
+        elif script == 'cache':
+            ida_kernwin.show_wait_box("Wait for updating the cache")
+            self.update_data()
+            self.refresh_all()
+            ida_kernwin.msg("the caches of the function relationships and the referred string were Updated." + os.linesep)
+            ida_kernwin.hide_wait_box()
+        elif script == 'partial':
+            ea = ida_kernwin.get_screen_ea()
+            self.partial_cache_update(ea)
+            self.refresh_all(ea)
+            ida_kernwin.msg("the caches of the function relationships and the referred string were Updated partially." + os.linesep)
+        elif script == 'comments':
+            self.cache_cmt_update()
+            self.refresh_all()
+            ida_kernwin.msg("the caches related to comments were Updated." + os.linesep)
+        elif script == 'help':
+            self.print_help()
         
     def after_filtered(self, text):
         # if it empty, expand the current location and move to it
@@ -1330,6 +1370,9 @@ D: enable/disable Debug mode
         
         # processes after filtering
         self.tree.after_filtered.connect(self.after_filtered)
+        
+        # execute built-in scripts
+        self.tree.builtin_exec.connect(self.builtin_exec)
         
         # click
         #self.tree.clicked.connect(self.on_clk)
@@ -1538,7 +1581,10 @@ D: enable/disable Debug mode
         
         #for func_ea in sorted(self.func_relations):
         for func_ea in idautils.Functions():
-            self.PopulateFuncTree(root, func_ea)
+            if func_ea in self.func_relations:
+                self.PopulateFuncTree(root, func_ea)
+            else:
+                ida_kernwin.msg("Could not find %x in the cache. It might be old. Please renew the cache by pressing \"U\" after clicking CTO Function Lister window. %s" % (func_ea, os.linesep))
         
         # Build imports
         root = QtGui.QStandardItem("Imports")

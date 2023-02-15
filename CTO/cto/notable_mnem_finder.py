@@ -125,7 +125,11 @@ class notable_mnem_t(object):
                 flag = True
                 
             if flag and ea != idc.BADADDR:
-                yield ea, mnem_type, dst_ea
+                f = ida_funcs.get_func(ea)
+                func_ea = idc.BADADDR
+                if f:
+                    func_ea = f.start_ea
+                yield func_ea, ea, mnem_type, dst_ea
                 self.set_cmt(ea, mnem_type)
                 if dst_ea != idc.BADADDR:
                     self.set_cmt(dst_ea, mnem_type)
@@ -133,8 +137,8 @@ class notable_mnem_t(object):
             
 def main():
     c = notable_mnem_t()
-    for ea, mnem_type, dst_ea in c.mnem_handlers():
-        print("%x: %s, %x" % (ea, mnem_type, dst_ea))
+    for func_ea, ea, mnem_type, dst_ea in c.mnem_handlers():
+        print("%x %s: %x: %s, %x" % (func_ea, idc.get_name(func_ea), ea, mnem_type, dst_ea))
 
 if __name__ == "__main__":
     main()
