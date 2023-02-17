@@ -20,8 +20,8 @@ Presentation slides
 https://vblocalhost.com/uploads/2021/09/VB2021-14.pdf
 
 ## Requirements
-- IDA Pro 7.4 or later (I tested on 7.5 SP3 and 7.6 SP1)
-- Python 3.x (I tested on Python 3.8 and 3.9)
+- IDA Pro 7.4 or later (I tested on 7.5 SP3 to 7.7 and 8.2 SP1)
+- Python 3.x (I tested on Python 3.8 to 3.11)
 
 You will need at least IDA Pro 7.4 or later because of the APIs that I use.
 And use Python 3.x. It should work on Python 2.7 but I did not test enough and I do not support it because it has already obsoleted and deprecated.
@@ -41,6 +41,10 @@ And use Python 3.x. It should work on Python 2.7 but I did not test enough and I
 
 - SusanRTTI  
   https://github.com/nccgroup/SusanRTTI
+
+- Class Informer
+  https://sourceforge.net/projects/classinformer/
+  https://github.com/herosi/classinformer-ida8
 
 ## How to Install
 See "[INSTALL](/INSTALL)" file.

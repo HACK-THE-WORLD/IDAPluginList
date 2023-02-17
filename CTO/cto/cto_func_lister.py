@@ -183,7 +183,7 @@ class MyWidget(QtWidgets.QTreeView):
             self.proxy_model.setRecursiveFilteringEnabled(True)
         else:
             self.proxy_model = MyFilterProxyModel()
-        # cange the filter method according to the version
+        # change the filter method according to the version
         if (self.qt_ver[0] >= 5 and self.qt_ver[1] >= 12) or self.qt_ver >= 6:
             self.filterChanged = self._filterChanged_512
         else:
