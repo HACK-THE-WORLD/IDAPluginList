@@ -42,8 +42,8 @@ And use Python 3.x. It should work on Python 2.7 but I did not test enough and I
 - SusanRTTI  
   https://github.com/nccgroup/SusanRTTI
 
-- Class Informer
-  https://sourceforge.net/projects/classinformer/
+- Class Informer  
+  https://sourceforge.net/projects/classinformer/  
   https://github.com/herosi/classinformer-ida8
 
 ## How to Install

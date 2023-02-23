@@ -22,6 +22,11 @@ import ida_struct
 import inspect
 import os
 import tempfile
+import time
+
+import cProfile
+import pstats
+import io
 
 import tinfo
 import jump
@@ -35,6 +40,22 @@ g_fp = None
 g_max_lines = 20000
 g_lines = 0
 g_dont_record_mnems = ['nop']
+
+def qprofile(func):
+    def profiled_func(*args, **kwargs):
+        try:
+            profile = cProfile.Profile()
+            profile.enable()
+            result = func(*args, **kwargs)
+            profile.disable()
+            return result
+        finally:
+            s = io.StringIO()
+            ps = pstats.Stats(
+                profile, stream=s).strip_dirs(
+            ).sort_stats(-1).print_stats()
+            print(s.getvalue())
+    return profiled_func
 
 def l_dbg_print(*msg):
     global g_fp
@@ -1159,7 +1180,9 @@ def fix_parents(func_relations, vtbl_refs):
     for func_ea in func_relations:
         fix_parent(func_relations, vtbl_refs, func_ea)
         
+#@qprofile
 def get_func_relations():
+    t1 = time.time()
     result = {}
     imports = get_imports()
     #import_eas = set([x[1] for x in imports])
@@ -1169,6 +1192,8 @@ def get_func_relations():
         result[func_ea] = {"parents":parents, "children":children, "func_type":func_type, "gvars":gvars, "strings":strings, "struct_offsets": stroff, "vftables": vtbl}
     vtbl_refs = get_vtbl_refs(result)
     fix_parents(result, vtbl_refs)
+    t2 = time.time()
+    ida_kernwin.msg("Elapsed time: %f%s" % (t2 - t1, os.linesep))
     return result, import_eas, string_eas
 
 def get_dref_type(func_ea, func_type, func_relations):
@@ -1778,7 +1803,7 @@ def main():
     imports = get_imports()
     import_eas = dict.fromkeys([x[1] for x in imports])
     string_eas = get_refed_strings()
-    ea = here()
+    ea = idc.here()
     f, bbs = get_func_bbs(ea)
     if f:
         ea = f.start_ea
@@ -1803,10 +1828,10 @@ def main():
         if 'g_func_relations' not in globals():
             g_func_relations, _, _ = get_func_relations()
         
-        for r in trace_func_calls(g_func_relations, here(), target_ea=ida_idaapi.BADADDR, direction="parents", max_recursive=-1, skip_lib=True, skip_api=True, debug=True):
+        for r in trace_func_calls(g_func_relations, idc.here(), target_ea=ida_idaapi.BADADDR, direction="parents", max_recursive=-1, skip_lib=True, skip_api=True, debug=True):
             dbg_print("$$$$$$$$$$$$$$$$ found a path:", [(hex(y).rstrip("L"), hex(x).rstrip("L"), z) for x,y,z in reversed(r)], "to ", hex(ea))
 
-        for r in trace_func_calls(g_func_relations, here(), target_ea=ida_idaapi.BADADDR, direction="children", max_recursive=-1, skip_lib=True, skip_api=True, debug=True):
+        for r in trace_func_calls(g_func_relations, idc.here(), target_ea=ida_idaapi.BADADDR, direction="children", max_recursive=-1, skip_lib=True, skip_api=True, debug=True):
             dbg_print("$$$$$$$$$$$$$$$$ found a path:", [(hex(x).rstrip("L"), hex(y).rstrip("L"), z) for x,y,z in reversed(r)], "to ", hex(ea))
             
 if __name__ == '__main__':
