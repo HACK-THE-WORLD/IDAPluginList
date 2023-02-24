@@ -48,6 +48,17 @@ FT_STR = get_func_relation.FT_STR
 FT_STO = get_func_relation.FT_STO
 FT_VTB = get_func_relation.FT_VTB
 
+class MyFilterProxyModel510(QtCore.QSortFilterProxyModel):
+    itemDataChanged = QtCore.pyqtSignal(QtCore.QModelIndex, str, str, int)
+
+    # for observing renaming events
+    def setData(self, index, value, role=QtCore.Qt.EditRole):
+        oldvalue = index.data(role)
+        result = super(MyFilterProxyModel510, self).setData(index, value, role)
+        if result and value != oldvalue:
+            self.itemDataChanged.emit(index, oldvalue, value, role)
+        return result
+
 class MyFilterProxyModel(QtCore.QSortFilterProxyModel):
     itemDataChanged = QtCore.pyqtSignal(QtCore.QModelIndex, str, str, int)
     
@@ -174,7 +185,7 @@ class MyWidget(QtWidgets.QTreeView):
         # generate source model
         self.model = QtGui.QStandardItemModel()
         #self.modeltest = ModelTest(self.model, self)
-        self.model.setHorizontalHeaderLabels(['Name','Address', 'CR', 'BB', 'FN', 'A/L', 'GV', 'STR'])
+        self.model.setHorizontalHeaderLabels(['Name','Address', 'XR', 'BB', 'FN', 'A/L', 'GV', 'STR'])
         self.model.horizontalHeaderItem(2).setToolTip("Xrefs to count")
         self.model.horizontalHeaderItem(3).setToolTip("Basic blocks count")
         self.model.horizontalHeaderItem(4).setToolTip("Internal function pointers count")
@@ -184,7 +195,8 @@ class MyWidget(QtWidgets.QTreeView):
         
         # set proxy model for filter
         if (self.qt_ver[0] >= 5 and self.qt_ver[1] >= 10) or self.qt_ver >= 6:
-            self.proxy_model = QtCore.QSortFilterProxyModel()
+            #self.proxy_model = QtCore.QSortFilterProxyModel()
+            self.proxy_model = MyFilterProxyModel510()
             # the option is available only 5.10 and above
             self.proxy_model.setRecursiveFilteringEnabled(True)
         else:
@@ -201,8 +213,7 @@ class MyWidget(QtWidgets.QTreeView):
         # connect tree view with source item model through proxy model
         self.setModel(self.proxy_model)
         self.proxy_model.setSourceModel(self.model)
-        if self.qt_ver[0] == 5 and self.qt_ver[1] < 12:
-            self.proxy_model.itemDataChanged.connect(self.handleItemDataChanged)
+        self.proxy_model.itemDataChanged.connect(self.handleItemDataChanged)
         
         # set selection model for synchronizing with ida
         self.sel_model = QtCore.QItemSelectionModel(self.proxy_model)
@@ -372,18 +383,17 @@ class MyWidget(QtWidgets.QTreeView):
         QtWidgets.QTreeView.currentChanged(self, current, previous)
         self.current_changed.emit(current, previous)
         #print(current, previous)
-        
+
     def handleItemDataChanged(self, idx, old_val, new_val, role):
         if role == QtCore.Qt.EditRole:
             if idx is not None and idx.isValid():
                 #self.dbg_print(idx.model())
                 if idx.model() == self.proxy_model:
                     idx = self.proxy_model.mapToSource(idx)
-            #if idx is not None and idx.isValid(): self.dbg_print(idx.model())
             if idx is not None and idx.isValid():
                 # send the single to the parent widget
                 self.item_changed.emit(idx, old_val, new_val)
-            
+    
     def eventFilter(self, src, event):
         flag = False
         if event.type() == QtCore.QEvent.KeyPress:
@@ -536,6 +546,7 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
         ida_kernwin.PluginForm.__init__(self)
         cto_base.cto_base.__init__(self, cto_data, curr_view, debug)
         
+        self.qt_ver = qtutils.get_qver()
 	
         # Create tree control
         self.tree = MyWidget()
@@ -936,6 +947,8 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
         return use_opn
     
     def jump_to_idx(self, idx):
+        # before jumping get the first column idx, which has ea.
+        idx = idx.sibling(idx.row(), 0)
         use_opn = self.does_use_opn(idx)
         ea, name, mod_name, ea_type = self.get_ea_by_idx(idx)
         if ea != ida_idaapi.BADADDR:
@@ -1356,11 +1369,12 @@ D: enable/disable Debug mode
         
         # adjust header length manually
         #self.tree.header().setCascadingSectionResizes(True)
+        self.tree.header().setMinimumSectionSize(10)
         self.tree.header().setSectionResizeMode(0, self.tree.header().Interactive)
-        self.tree.header().setSectionResizeMode(1, self.tree.header().Interactive)
+        #self.tree.header().setSectionResizeMode(1, self.tree.header().Interactive)
         self.tree.header().setStretchLastSection(False)
         self.tree.header().resizeSection(0, 180)
-        for i in range(2,8):
+        for i in range(1,8):
             self.tree.resizeColumnToContents(i)
         
         # =============================
