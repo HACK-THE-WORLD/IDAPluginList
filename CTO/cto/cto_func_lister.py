@@ -25,14 +25,12 @@ import syncui
 import qtutils
 import cto_utils
 import icon
-#import cto
 import get_func_relation
 ida_idaapi.require("cto_base")
 ida_idaapi.require("syncui")
 ida_idaapi.require("qtutils")
 ida_idaapi.require("cto_utils")
 ida_idaapi.require("icon")
-#ida_idaapi.require("cto")
 ida_idaapi.require("get_func_relation")
 
 if not hasattr(ida_kernwin, "WOPN_NOT_CLOSED_BY_ESC"):
@@ -48,17 +46,6 @@ FT_STR = get_func_relation.FT_STR
 FT_STO = get_func_relation.FT_STO
 FT_VTB = get_func_relation.FT_VTB
 
-class MyFilterProxyModel510(QtCore.QSortFilterProxyModel):
-    itemDataChanged = QtCore.pyqtSignal(QtCore.QModelIndex, str, str, int)
-
-    # for observing renaming events
-    def setData(self, index, value, role=QtCore.Qt.EditRole):
-        oldvalue = index.data(role)
-        result = super(MyFilterProxyModel510, self).setData(index, value, role)
-        if result and value != oldvalue:
-            self.itemDataChanged.emit(index, oldvalue, value, role)
-        return result
-
 class MyFilterProxyModel(QtCore.QSortFilterProxyModel):
     itemDataChanged = QtCore.pyqtSignal(QtCore.QModelIndex, str, str, int)
     
@@ -73,7 +60,7 @@ class MyFilterProxyModel(QtCore.QSortFilterProxyModel):
         except AttributeError:
             #self.__index__ = self.___index__
             self.filterAcceptsRow = self._filterAcceptsRow
-            
+    
     # for observing renaming events
     def setData(self, index, value, role=QtCore.Qt.EditRole):
         oldvalue = index.data(role)
@@ -194,15 +181,14 @@ class MyWidget(QtWidgets.QTreeView):
         self.model.horizontalHeaderItem(7).setToolTip("Strings count")
         
         # set proxy model for filter
-        if (self.qt_ver[0] >= 5 and self.qt_ver[1] >= 10) or self.qt_ver >= 6:
-            #self.proxy_model = QtCore.QSortFilterProxyModel()
-            self.proxy_model = MyFilterProxyModel510()
+        if (self.qt_ver[0] >= 5 and self.qt_ver[1] >= 10) or self.qt_ver[0] >= 6:
+            self.proxy_model = QtCore.QSortFilterProxyModel()
             # the option is available only 5.10 and above
             self.proxy_model.setRecursiveFilteringEnabled(True)
         else:
             self.proxy_model = MyFilterProxyModel()
         # change the filter method according to the version
-        if (self.qt_ver[0] >= 5 and self.qt_ver[1] >= 12) or self.qt_ver >= 6:
+        if (self.qt_ver[0] >= 5 and self.qt_ver[1] >= 12) or self.qt_ver[0] >= 6:
             self.filterChanged = self._filterChanged_512
         else:
             self.filterChanged = self._filterChanged
@@ -213,7 +199,8 @@ class MyWidget(QtWidgets.QTreeView):
         # connect tree view with source item model through proxy model
         self.setModel(self.proxy_model)
         self.proxy_model.setSourceModel(self.model)
-        self.proxy_model.itemDataChanged.connect(self.handleItemDataChanged)
+        if not((self.qt_ver[0] >= 5 and self.qt_ver[1] >= 10) or self.qt_ver[0] >= 6):
+            self.proxy_model.itemDataChanged.connect(self.handleItemDataChanged)
         
         # set selection model for synchronizing with ida
         self.sel_model = QtCore.QItemSelectionModel(self.proxy_model)
@@ -383,7 +370,7 @@ class MyWidget(QtWidgets.QTreeView):
         QtWidgets.QTreeView.currentChanged(self, current, previous)
         self.current_changed.emit(current, previous)
         #print(current, previous)
-
+        
     def handleItemDataChanged(self, idx, old_val, new_val, role):
         if role == QtCore.Qt.EditRole:
             if idx is not None and idx.isValid():
@@ -746,6 +733,8 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
         if f:
             ea = f.start_ea
         self.copy_cache_data()
+        # before modifiing the tree, disconnect dataChanged hook
+        self.model.dataChanged.disconnect(self.on_data_changed)
         if ea == ida_idaapi.BADADDR:
             self.clear_tree()
             self.PopulateTree()
@@ -757,6 +746,8 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
             # for general functions
             self.update_callee_function(orig_ea)
             self.update_function(ea)
+        # after modifiing the tree, reconnect dataChanged hook again
+        self.model.dataChanged.connect(self.on_data_changed)
             
         # restore filter text
         if filter_text:
@@ -1081,9 +1072,20 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
                     item.setBackground(self.selected_bg)
                 self.tree.setFocus()
                 self.sel_model.select(curr, QtCore.QItemSelectionModel.Select|QtCore.QItemSelectionModel.Rows)
-
+                
+    # On Qt 5.6.3, this does not work since roles are always empty while it works on 5.15.3.
+    def on_data_changed(self, topleft, rightobttom, roles):
+        if QtCore.Qt.EditRole in roles:
+            ea, old_val, _mod_name, _ = self.get_ea_by_idx(topleft)
+            new_val = topleft.data(QtCore.Qt.EditRole)
+            if not old_val:
+                old_val = ida_name.get_name(ea)
+            
+            self.on_item_changed(topleft, old_val, new_val)
+        
     def on_item_changed(self, idx, old_val, new_val):
         ea, _name, _mod_name, _ = self.get_ea_by_idx(idx)
+        refreshed = False
         if ea != ida_idaapi.BADADDR and old_val != new_val:
             r = ida_name.set_name(ea, new_val, ida_name.SN_NOCHECK|ida_name.SN_NOWARN)
             if not r:
@@ -1104,9 +1106,18 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
                         item.setText(name)
                         # refresh other cto instanses
                         self.refresh_all(ea)
+                        refreshed = True
                 else:
                     # refresh other cto instances
                     self.refresh_all(ea)
+                    refreshed = True
+                    
+        if refreshed:
+            # for IDA history (back)
+            w, wt = self.get_widget()
+            self.exec_ui_action("Return", w=w)
+            self.expand_item_by_ea(ida_kernwin.get_screen_ea())
+            self.tree.setFocus()
             
     def buildContextMenu(self, event):
         cmenu = QtWidgets.QMenu(self.tree)
@@ -1234,6 +1245,12 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
         # rename a function
         elif c == 'N' and state == 0:
             flag = self.check_and_rename_var()
+            if flag:
+                # for IDA history (back)
+                w, wt = self.get_widget()
+                self.exec_ui_action("Return", w=w)
+                self.expand_item_by_ea(ida_kernwin.get_screen_ea())
+                self.tree.setFocus()
         elif c == 'P' and state == ALT:
             self.check_and_rename_func_info()
         # repeatable comment
@@ -1383,7 +1400,9 @@ D: enable/disable Debug mode
         self.tree.current_changed.connect(self.on_curr_item_changed)
         
         # for hooking renaming events
-        self.tree.item_changed.connect(self.on_item_changed)
+        if not((self.qt_ver[0] >= 5 and self.qt_ver[1] >= 10) or self.qt_ver[0] >= 6):
+            self.tree.item_changed.connect(self.on_item_changed)
+        self.model.dataChanged.connect(self.on_data_changed)
         
         # shortcut keys for passing to IDA
         self.tree.key_pressed.connect(self.on_key_pressed)
