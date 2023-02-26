@@ -1391,8 +1391,8 @@ D: enable/disable Debug mode
         #self.tree.header().setSectionResizeMode(1, self.tree.header().Interactive)
         self.tree.header().setStretchLastSection(False)
         self.tree.header().resizeSection(0, 180)
-        for i in range(1,8):
-            self.tree.resizeColumnToContents(i)
+        #for i in range(1,8):
+        #    self.tree.resizeColumnToContents(i)
         
         # =============================
         # for actions like when clicking, right-clicking or for events when changing selected items
@@ -1682,6 +1682,12 @@ D: enable/disable Debug mode
         self.change_widget_icon(bg_change=self.config.dark_mode)
         if self.config.dark_mode:
             self.tree.reset_btn_size()
+            
+        # change the columns size
+        # This does not work after displaying the widget.
+        # That's why I inserted this here.
+        for i in range(1,8):
+            self.tree.resizeColumnToContents(i)
             
         return r
 
