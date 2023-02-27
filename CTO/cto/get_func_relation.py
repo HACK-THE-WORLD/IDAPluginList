@@ -156,16 +156,16 @@ FT_VTB = 128  # for vftable
 def get_func_type(func_ea, import_eas=None, func_type=FT_UNK, offset=False):
     if import_eas is None:
         import_eas = []
-    try:
-        func_flags = idc.get_func_attr(func_ea, idc.FUNCATTR_FLAGS)
-    except TypeError:
-        return func_type
+    #try:
+    #    func_flags = idc.get_func_attr(func_ea, idc.FUNCATTR_FLAGS)
+    #except TypeError:
+    #    return func_type
     
     f = ida_funcs.get_func(func_ea)
+    if f is None:
+        return func_type
     
-    fn = idc.get_func_name(func_ea)
-    if not fn:
-        fn = ida_name.get_name(func_ea)
+    func_flags = f.flags
     
     if func_ea in import_eas:
         func_type = FT_API
@@ -187,8 +187,13 @@ def get_func_type(func_ea, import_eas=None, func_type=FT_UNK, offset=False):
                 func_type = FT_API
             elif v_flags & ida_funcs.FUNC_THUNK:
                 func_type = FT_LIB
-    elif fn and tinfo.get_tinfo_by_name(fn):
-        func_type = FT_API
+    else:
+        fn = idc.get_func_name(func_ea)
+        if not fn:
+            fn = ida_name.get_name(func_ea)
+    
+        if fn and tinfo.get_tinfo_by_name(fn):
+            func_type = FT_API
     
     return func_type
 
@@ -482,12 +487,27 @@ def get_funcptr_ea(ea, bbs, import_eas, string_eas):
     insn = ida_ua.insn_t()
     inslen = ida_ua.decode_insn(insn, ea)
     for i in range(inslen):
-        if ida_ua.o_void == insn.ops[i].type:
+        op = insn.ops[i]
+        optype = op.type
+        if ida_ua.o_void == optype:
             i = -1
             break
         
-        optype = idc.get_operand_type(ea, i)
-        v = idc.get_operand_value(ea, i)
+        #optype = idc.get_operand_type(ea, i)
+        #v = idc.get_operand_value(ea, i)
+        
+        # get operand value
+        if op.type in [ ida_ua.o_mem, ida_ua.o_far, ida_ua.o_near, ida_ua.o_displ ]:
+            v = op.addr
+        elif op.type == ida_ua.o_reg:
+            v = op.reg
+        elif op.type == ida_ua.o_imm:
+            v = op.value
+        elif op.type == ida_ua.o_phrase:
+            v = op.phrase
+        else:
+            v = -1
+        orig_v = v
         flags = ida_bytes.get_full_flags(v)
         
         # call    sub_xxxxxxxx
@@ -680,7 +700,8 @@ def get_funcptr_ea(ea, bbs, import_eas, string_eas):
             # add     r8, rva qword_7FF9648578E0[r9+rcx*8]
             elif optype in [ida_ua.o_displ, ida_ua.o_phrase]:
                 opstr = idc.print_operand(ea, i)
-                v = idc.get_operand_value(ea, i)
+                #v = idc.get_operand_value(ea, i)
+                v = orig_v
                 if target_ea == ida_idaapi.BADADDR:
                     # for rva address, you will need to use get_operand_value's value + dref value
                     next_ea_base = ida_xref.get_first_dref_from(ea)
