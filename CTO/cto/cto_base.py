@@ -204,10 +204,11 @@ class cto_base(debug_print.debug):
     
     def _partial_cache_update(self, ea):
         # updating a function that the ea belongs to.
-        f, bbs = get_func_relation.get_func_bbs(ea)
+        #f, bbs = get_func_relation.get_func_bbs(ea)
+        f = ida_funcs.get_func(ea)
         if f:
             ea = f.start_ea
-        parents, children, apicalls, gvars, strings, stroff, vtbl = get_func_relation.get_family_members(ea, bbs, self.import_eas, self.string_eas)
+        parents, children, apicalls, gvars, strings, stroff, vtbl = get_func_relation.get_family_members(ea, f, self.import_eas, self.string_eas)
         func_type = get_func_relation.get_func_type(ea, self.import_eas)
         self.func_relations[ea] = {"parents":parents, "children":children, "func_type":func_type, "gvars":gvars, "strings":strings, "struct_offsets":stroff, "vftables":vtbl , "cmt":{}, "rcmt":{}}
         get_func_relation.fix_parent(self.func_relations, self.vtbl_refs, ea)
