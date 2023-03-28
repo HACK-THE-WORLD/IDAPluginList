@@ -69,9 +69,9 @@ I'm not a programmer. I'm a malware analyst. Please do not expect product-level 
 PRs are welcome. Just complaining and a bug report without enough information are NOT welcome ;-)
 
 ## Known Issues
+- Currently, CTO focuses on Intel x64/x86 architecture. If you want to extend other architectures, please send the PR to me.
 - CTO Function Lister will crash on IDA on Linux for some reasons while it works on Windows. But I can't fix it because I don't have that.
 ```
 QSortFilterProxyModel: index from wrong model passed to mapToSource
 ```
-- Currently, CTO focuses on Intel x64/x86 architecture. If you want to extend other architectures, please send the PR to me.
-- On IDA 7.6 including SP1, you will not be able to use ESC for looking backward location history on CTO’s window because of a bug of IDA. Instead, it will close the CTO window if you press it. I reported the bug and it was fixed internally but not released yet. If you want to use it, you will need a fixed ida*.exe binary. Ask hex-rays support. Please do not ask me.
+- On IDA 7.6 including SP1, you will not be able to use ESC for looking backward location history on CTO’s window because of a bug of IDA. Instead, it will close the CTO window if you press it. It has been fixed on IDA 7.7 or later. Please use them.
