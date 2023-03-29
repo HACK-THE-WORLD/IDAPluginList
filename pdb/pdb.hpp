@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2005-2022 Hex-Rays SA <support@hex-rays.com>
+// Copyright (c) 2005-2023 Hex-Rays SA <support@hex-rays.com>
 // ALL RIGHTS RESERVED.
 //
 #pragma once

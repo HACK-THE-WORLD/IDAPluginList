@@ -112,6 +112,26 @@ def guess_true_names(name):
             result.append(prefix+n)
     return result
 
+def get_func_detail(tif):
+    fi = ida_typeinf.func_type_data_t()
+    tif.get_func_details(fi)
+    return fi
+
+def get_func_args(fi):
+    if not fi.empty():
+        #print fi
+        for i in fi:
+            yield i
+
+def is_thiscall(cc):
+    if cc & ida_typeinf.CM_CC_MASK == ida_typeinf.CM_CC_THISCALL:
+        return True
+    return False
+
+def is_fastcall(cc):
+    if cc & ida_typeinf.CM_CC_MASK == ida_typeinf.CM_CC_FASTCALL:
+        return True
+    return False
 
 """
 def del_op_tinfo(func_relations, func_ea, ea):

@@ -57,7 +57,7 @@ class cto_base(debug_print.debug):
     
     def __init__(self, cto_data=None, curr_view=None, debug=False):
         #super(cto_base, self).__init__(debug)
-        debug_print.debug.__init__(self, debug)
+        debug_print.debug.__init__(self)
         
         self.cmt_obj = comments.comment_t()
 

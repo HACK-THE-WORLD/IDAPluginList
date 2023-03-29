@@ -629,7 +629,7 @@ static BOOL CALLBACK SymbolServerCallback(
       {
         //https://docs.microsoft.com/en-us/windows/win32/api/dbghelp/nc-dbghelp-psymbolservercallbackproc
         //文档说明是取消变量*data是ULONG64类型
-		ULONG64* do_cancel = (ULONG64*)data;
+        ULONG64* do_cancel = (ULONG64*)data;
         // apparently this can arrive before SSRVACTION_SIZE
         // so check that we did show the waitbox
         if ( *wait_box_shown && user_cancelled() )

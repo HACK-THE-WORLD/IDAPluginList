@@ -5,14 +5,15 @@ import os
 import ida_kernwin
 
 class debug(object):
-    def __init__(self, debug=False):
+    def __init__(self, frames=2, lines=20000, outfile=True):
+        self.outfile = outfile
         self.f = None
         self.output_lines = 0
-        self.max_output_lines = 20000
-        self.trace_back_frames = 2
+        self.max_output_lines = lines
+        self.trace_back_frames = frames
 
     def _dbg_print(self, *msg):
-        if not self.f:
+        if not self.f and self.outfile:
             try:
                 self.f = tempfile.NamedTemporaryFile(delete=False, buffering=0)
             except TypeError:
@@ -45,13 +46,13 @@ class debug(object):
                 msg = list(msg)
                 msg.append(os.linesep)
         msg = "[%s:%d %s] " % (os.path.basename(filename), lineno, function) + " ".join([str(x) for x in msg])
-        if self.f:
+        if self.f and self.outfile:
             self.f.write(msg.encode('utf-8'))
         if self.output_lines < self.max_output_lines:
             ida_kernwin.msg(msg)
         elif self.output_lines == self.max_output_lines:
             ida_kernwin.msg("The number of lines has been exceeded. Stop displaying debug messages.%s" % os.linesep)
-            if self.f:
+            if self.f and self.outfile:
                 ida_kernwin.msg("See %s to check the rest of messages.%s" % (self.f.name, os.linesep))
         self.output_lines += 1
             

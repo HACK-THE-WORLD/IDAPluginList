@@ -1023,6 +1023,114 @@ inline bool is_fake_vftable(tinfo_t vft_tif)
 }
 
 //----------------------------------------------------------------------
+static bool is_forbidden_name(const char *name)
+{
+  static const char *const forbidden_names[] = { "QueryInterface" };
+
+  for ( size_t i = 0; i < qnumber(forbidden_names); i++ )
+  {
+    if ( strcmp(name, forbidden_names[i]) == 0 )
+      return true;
+  }
+
+  return false;
+}
+
+//----------------------------------------------------------------------
+// In some cases the type of 'this' is wrong for derived virtual methods,
+// it uses the type of the base class instead of the derived class.
+// Also, the destructor name may use the base class as well, which is wrong.
+//
+// For example we have a derived class:
+//   class std::numpunct<char> : public _Facet_base
+//   [...]
+//
+// Then its VFT should be like this:
+//   struct /*VFT*/ std::numpunct<char>_vtbl
+//   {
+//     void (__cdecl *~std::numpunct<char>)(struct std::numpunct<char> *this);
+//     void (__cdecl *_Incref)(struct std::numpunct<char> *this);
+//   [...]
+//
+// Not like this:
+//   struct /*VFT*/ std::numpunct<char>_vtbl
+//   {
+//     void (__fastcall *~_Facet_base)(std::_Facet_base *this);
+//     void (__fastcall *_Incref)(std::_Facet_base *this);
+//   [...]
+void til_builder_t::fix_thisarg_type(const qstring &udt_name)
+{
+  uint32 udt_vft_ord(0);
+  qstring udt_vft_name;
+  get_vft_name(&udt_vft_name, &udt_vft_ord, udt_name.c_str());
+
+  tinfo_t tinfo;
+  tinfo.get_named_type(nullptr, udt_vft_name.c_str(), BTF_STRUCT);
+  udt_type_data_t udt;
+  tinfo.get_udt_details(&udt);
+
+  tinfo_t base_tif;
+  base_tif.get_named_type(nullptr, udt_name.c_str(), BTF_STRUCT);
+
+  tinfo_t base_tif_p;
+  base_tif_p.create_ptr(base_tif);
+
+  bool changed = false;
+
+  for ( auto &udm : udt )
+  {
+    if ( is_forbidden_name(udm.name.c_str()) )
+      return;
+
+    tinfo_t tif_no_ptr = udm.type.get_pointed_object();
+    func_type_data_t ftd;
+    if ( !tif_no_ptr.get_func_details(&ftd, GTD_NO_ARGLOCS)
+      || ftd.empty()
+      || !ftd[0].type.is_ptr() )
+    {
+      continue;
+    }
+
+    // Fix destructor
+    if ( udm.name[0] == '~' )
+    {
+      changed = true;
+      qstring old_name = udm.name;
+      udm.name = qstring("~") + udt_name;
+      ddeb(("PDEB: Changed destructor in '%s' from '%s' to '%s'\n", udt_vft_name.c_str(), old_name.c_str(), udm.name.c_str()));
+    }
+
+    // Fix argument of functions if it doesn't match to real name
+    if ( !base_tif.compare_with(remove_pointer(ftd[0].type), TCMP_IGNMODS) )
+    {
+      changed = true;
+
+      ftd[0].type = tinfo_t(base_tif_p);
+      qstring old_type_str;
+      udm.type.print(&old_type_str);
+
+      tinfo_t t;
+      t.create_func(ftd);
+      t.create_ptr(t);
+
+      udm.type.clear();
+      udm.type = t;
+
+      qstring new_type_str;
+      udm.type.print(&new_type_str);
+
+      ddeb(("PDEB: Changed type in '%s' from '%s' to '%s'\n", udt_vft_name.c_str(), old_type_str.c_str(), new_type_str.c_str()));
+    }
+  }
+
+  if ( changed )
+  {
+    tinfo.create_udt(udt, BTF_STRUCT);
+    tinfo.set_named_type(nullptr, udt_vft_name.c_str(), NTF_REPLACE);
+  }
+}
+
+//----------------------------------------------------------------------
 cvt_code_t til_builder_t::convert_udt(
         tinfo_t *out,
         pdb_sym_t &_sym,
@@ -1277,7 +1385,12 @@ cvt_code_t til_builder_t::convert_udt(
   BOOL cppobj;
   if ( _sym.get_constructor(&cppobj) == S_OK && cppobj > 0 )
     udt.taudt_bits |= TAUDT_CPPOBJ;
-  return create_udt(out, &udt, udtKind, udt_name.c_str());
+  cvt_code_t res = create_udt(out, &udt, udtKind, udt_name.c_str());
+
+  if ( res == cvt_ok )
+    fix_thisarg_type(udt_name);
+
+  return res;
 }
 
 //----------------------------------------------------------------------
