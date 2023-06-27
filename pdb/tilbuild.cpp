@@ -341,7 +341,8 @@ bool til_builder_t::retrieve_arguments(
         {
           if ( is_intel386(pdb_access->get_machine_type()) )
           {
-            if ( fi.cc == CM_CC_FASTCALL
+            if ( (fi.cc == CM_CC_FASTCALL
+               || fi.cc == CM_CC_SWIFT) // FIXME
               && cur_argloc.regoff() == 0
               && (cur_argloc.reg1() == R_cx && i == 0
                || cur_argloc.reg1() == R_dx && i == 1) )
@@ -366,9 +367,9 @@ bool til_builder_t::retrieve_arguments(
     if ( custom_cc )
     {
       // we have some register params; need to convert function to custom cc
-      fi.cc = (is_purging_cc(fi.cc) || fi.cc == CM_CC_THISCALL || fi.cc == CM_CC_FASTCALL)
-            ? CM_CC_SPECIALP
-            : CM_CC_SPECIAL;
+      CASSERT(is_purging_cc(CM_CC_THISCALL));
+      CASSERT(is_purging_cc(CM_CC_FASTCALL));
+      fi.cc = is_purging_cc(fi.cc) ? CM_CC_SPECIALP : CM_CC_SPECIAL;
     }
     return true;
   }

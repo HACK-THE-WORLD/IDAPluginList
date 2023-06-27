@@ -1182,11 +1182,7 @@ LOAD_PDB:
       pdberr_suggest_vs_runtime(hr);
 
       // DIA interface failed, try the old methods
-      if ( hr != E_PDB_INVALID_SIG
-        && hr != E_PDB_INVALID_AGE
-        && hr != E_PDB_NOT_FOUND
-        && hr != E_PDB_INVALID_EXECUTABLE
-        && !inf_test_mode() )
+      if ( !inf_test_mode() )
       {
         g_machine_type = get_machine_from_idb(ph); // See 'g_machine_type' comment above
         ok = old_pdb_plugin(pdbargs.loaded_base, pdbargs.input_path.c_str(), pdbargs.spath.c_str());
