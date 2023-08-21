@@ -10,6 +10,9 @@ CTO has another helper plugin named "CTO Function Lister", although it can work 
 An introduction video is here.  
 https://youtu.be/zVCpb82UfFs
 
+Check the article below about how to use CTO and CTO Function Lister in malware analysis tasks.
+https://www.iij.ad.jp/en/dev/iir/pdf/iir_vol59_focus1_EN.pdf
+
 You can also check the presentation at VB2021 localhost.  
 https://vblocalhost.com/conference/presentations/cto-call-tree-overviewer-yet-another-function-call-tree-viewer/
 
@@ -52,12 +55,13 @@ See "[INSTALL](/INSTALL)" file.
 ## How to Use
 To start CTO, press Alt+Shift+C.
 
-
 Double-click "..." symbol if you want to expand the path.
 If you want to create a graph based on a different target function, jump to the target function, click the CTO window, and press "F" key.
 See the help by pressing "H" key on the CTO window.
 
 To start CTO Function Lister, press Alt+Shift+F. See the help by pressing "H" key on the CTO Function Lister window as well.
+
+Check the articles showed in the top of this file as well.
 
 ## Note
 CTO is still under development and it is unstable yet. I might change the data structure drastically.

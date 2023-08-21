@@ -2462,7 +2462,7 @@ class CallTreeOverviewer(cto_base.cto_base, ida_graph.GraphViewer):
 [Shortcuts]
 H: Help that you are looking.
 R: Refresh the call graph manually.
-F: Force relaod for the call graph. This is useful to look into a function out of the
+F: Force reload for the call graph. This is useful to look into a function out of the
    current call tree without executing this script again.
 S: go back to the Start node.
 E: go to the End node (if you specify for finding a path between two points).
