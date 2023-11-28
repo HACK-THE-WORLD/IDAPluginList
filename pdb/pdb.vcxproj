@@ -105,8 +105,8 @@
     <Link>
       <AdditionalOptions>/export:PLUGIN %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>D:\Program Files\IDA Pro 7.7 SP1\plugins\pdb.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_32</AdditionalLibraryDirectories>
+      <OutputFile>D:\Program Files\IDA Pro 8.3\plugins\pdb.dll</OutputFile>
+      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_32_pro</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -134,8 +134,8 @@
     <Link>
       <AdditionalOptions>/export:PLUGIN %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>D:\Program Files\IDA Pro 7.7 SP1\plugins\pdb64.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64</AdditionalLibraryDirectories>
+      <OutputFile>D:\Program Files\IDA Pro 8.3\plugins\pdb64.dll</OutputFile>
+      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64_pro</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -163,8 +163,8 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>D:\Program Files\IDA Pro 7.7 SP1\plugins\pdb.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_32</AdditionalLibraryDirectories>
+      <OutputFile>D:\Program Files\IDA Pro 8.3\plugins\pdb.dll</OutputFile>
+      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_32_pro</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -194,8 +194,8 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>D:\Program Files\IDA Pro 7.7 SP1\plugins\pdb64.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64</AdditionalLibraryDirectories>
+      <OutputFile>D:\Program Files\IDA Pro 8.3\plugins\pdb64.dll</OutputFile>
+      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64_pro</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -285,12 +285,12 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="packages\Microsoft.VisualStudio.Setup.Configuration.Native.3.2.2146\build\native\Microsoft.VisualStudio.Setup.Configuration.Native.targets" Condition="Exists('packages\Microsoft.VisualStudio.Setup.Configuration.Native.3.2.2146\build\native\Microsoft.VisualStudio.Setup.Configuration.Native.targets')" />
+    <Import Project="packages\Microsoft.VisualStudio.Setup.Configuration.Native.3.8.2112\build\native\Microsoft.VisualStudio.Setup.Configuration.Native.targets" Condition="Exists('packages\Microsoft.VisualStudio.Setup.Configuration.Native.3.8.2112\build\native\Microsoft.VisualStudio.Setup.Configuration.Native.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。使用“NuGet 程序包还原”可下载这些程序包。有关更多信息，请参见 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('packages\Microsoft.VisualStudio.Setup.Configuration.Native.3.2.2146\build\native\Microsoft.VisualStudio.Setup.Configuration.Native.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.VisualStudio.Setup.Configuration.Native.3.2.2146\build\native\Microsoft.VisualStudio.Setup.Configuration.Native.targets'))" />
+    <Error Condition="!Exists('packages\Microsoft.VisualStudio.Setup.Configuration.Native.3.8.2112\build\native\Microsoft.VisualStudio.Setup.Configuration.Native.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.VisualStudio.Setup.Configuration.Native.3.8.2112\build\native\Microsoft.VisualStudio.Setup.Configuration.Native.targets'))" />
   </Target>
 </Project>

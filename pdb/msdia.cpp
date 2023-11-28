@@ -952,8 +952,8 @@ public:
 							// Doesn't matter if you are on 32 bit or 64 bit,
 							// DWORD is always 32 bits, so first two revision numbers
 							// come from dwFileVersionMS, last two come from dwFileVersionLS
-							ULONGLONG ullCurVersion = make_ulonglong(verInfo->dwFileVersionLS, verInfo->dwFileVersionMS);
-							ULONGLONG ullMinVersion = make_ulonglong(MAKELONG(1001, 19596), MAKELONG(0, 10));
+							ULONGLONG ullCurVersion = make_uint64(verInfo->dwFileVersionLS, verInfo->dwFileVersionMS);
+							ULONGLONG ullMinVersion = make_uint64(MAKELONG(1001, 19596), MAKELONG(0, 10));
 							if (ullCurVersion < ullMinVersion)
 							{
 								warning("The version of the symsrv.dll file is lower than 10.0.19596.1001, so it cannot support immediate cancellation of the download operation!");

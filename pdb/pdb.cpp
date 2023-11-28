@@ -689,8 +689,8 @@ HRESULT pdb_til_builder_t::handle_function_child(
           {
             opinfo_t mt;
             size_t size;
-            flags_t flags;
-            if ( get_idainfo_by_type(&size, &flags, &mt, tpi.type) )
+            flags64_t flags;
+            if ( get_idainfo64_by_type(&size, &flags, &mt, tpi.type) )
             {
               // DIA's offset is bp-based, not frame-based like in IDA
               if ( is_frame_reg(reg_id) )
