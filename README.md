@@ -28,3 +28,4 @@ IDA插件集合，含项目名称及项目地址。
 6. 用于解析存储在已编译二进制文件中的 GoLang 类型信息：https://github.com/sibears/IDAGolangHelper
 7. PDB插件修复增强：https://github.com/sonyps5201314/pdb
 8. 使用ChatGPT来帮助IDA进行反编译 https://github.com/JusticeRage/Gepetto
+9. 用于对相似函数进行分组：https://github.com/harlamism/IdaClu
