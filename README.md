@@ -17,6 +17,7 @@ IDA插件集合，含项目名称及项目地址。
 3. 用于查找加密常量内容（以及更多）：https://github.com/polymorf/findcrypt-yara
 4. 交互式二进制Patch插件：https://github.com/gaasedelen/patching
 5. 支持多架构的汇编编辑器：https://github.com/keystone-engine/keypatch
+6. 能够重建二进制文件中使用的结构体、类和虚函数表：https://github.com/thalium/symless
 
 ### 增强
 
