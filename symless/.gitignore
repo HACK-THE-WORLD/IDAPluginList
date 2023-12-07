@@ -1,0 +1,6 @@
+__pycache__
+.vscode
+custom_hooks.py
+tests/bin/*
+tests/out/*
+tests/Makefile

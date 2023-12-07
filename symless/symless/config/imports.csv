@@ -1,0 +1,60 @@
+# List of imports / functions used as entry points for the analysis
+# format #1: module_name, impot_name, type
+# format #2: func_name / func_ea, type
+# available types:
+#                   malloc  : (size) -> allocated_addr
+#                   calloc  : (count, unit_size) -> allocated_addr
+#                   realloc : (ptr, size) -> allocated_addr
+
+
+# specify a different index for an argument:
+
+# ex #1: realloc is like malloc with size arg at index 1 instead of 0
+# the two following lines are equivalent:
+# msvcrt, realloc, realloc
+# msvcrt, realloc, malloc(1)
+
+# ex #2: calloc-like function with count arg at index 1 and size at index 2
+# ex_module, ex_calloc_like, calloc(1|2)
+
+
+# Windows lib c
+msvcrt, malloc, malloc
+msvcrt, calloc, calloc
+msvcrt, realloc, realloc # use realloc as entry point ?
+
+# Windows API set schema
+api-ms-win-core-heap-l1-1-0, HeapAlloc, malloc(2)
+api-ms-win-core-heap-l1-1-0, HeapReAlloc, malloc(3)
+api-ms-win-crt-private-l1-1-0, _o_malloc, malloc
+
+# Windows VirtualAlloc
+kernel32, VirtualAlloc, malloc(1)
+kernel32, VirtualAlloc2, malloc(2)
+kernel32, VirtualAlloc2FromApp, malloc(2)
+kernel32, VirtualAllocEx, malloc(2)
+kernel32, VirtualAllocExNuma, malloc(2)
+kernel32, VirtualAllocFromApp, malloc(1)
+
+# Windows kernel
+ntoskrnl, ExAllocatePool, malloc(1)
+ntoskrnl, ExAllocatePool2, malloc(1)
+ntoskrnl, ExAllocatePool3, malloc(1)
+ntoskrnl, ExAllocatePoolZero, malloc(1)
+ntoskrnl, ExAllocatePoolPriorityUninitialized, malloc(1)
+ntoskrnl, ExAllocatePoolPriorityZero, malloc(1)
+ntoskrnl, ExAllocatePoolQuotaUninitialized, malloc(1)
+ntoskrnl, ExAllocatePoolQuotaZero, malloc(1)
+ntoskrnl, ExAllocatePoolUninitialized, malloc(1)
+ntoskrnl, ExAllocatePoolWithQuota, malloc(1)
+ntoskrnl, ExAllocatePoolWithQuotaTag, malloc(1)
+ntoskrnl, ExAllocatePoolWithTag, malloc(1)
+ntoskrnl, ExAllocatePoolWithTagPriority, malloc(1)
+
+# GLIBC 2.31
+.dynsym, malloc@@GLIBC_, malloc
+.dynsym, calloc@@GLIBC_, calloc
+.dynsym, realloc@@GLIBC_, realloc
+
+.dynsym, _Znwj@@GLIBCXX_, malloc # operator new(uint)
+.dynsym, _Znwm@@GLIBCXX_, malloc # operator new(ulong)

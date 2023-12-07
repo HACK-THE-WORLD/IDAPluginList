@@ -1,0 +1,93 @@
+/* IdaClu Stylesheet by Sergejs 'HRLM' Harlamovs */
+/* Version 0.9 Sep 14, 2023 */
+
+QPushButton.head {
+    border-color:rgb(173,173,173);
+	border-style: solid;
+	border-width: 1px;
+	/* border-bottom: 0; */
+	background-color: rgb(220,220,220)
+}
+QWidget.frame > QFrame {
+	border:1px solid rgb(41, 41, 41);
+}
+QWidget.frame > QFrame > QFrame {
+	border:0px;
+}
+QWidget.frame > QFrame > QLabel {
+	border:0px;
+}
+QPushButton.select-head {
+    border-color:rgb(173,173,173);
+	border-style: solid;
+	border-width: 1px;
+	border-right: 0;
+	border-color: rgb(130,135,144);
+	background-color: rgb(220,220,220)
+}
+QPushButton.plt-btn {
+	border-color:rgb(173,173,173);
+	border-style: outset;
+	border-width: 1px;
+}
+QPushButton.plt-btn:checked {
+	border-color:rgb(0, 84, 153);
+}
+QPushButton.plt-btn-yellow {
+	background-color: rgb(255,255,222);
+}
+QPushButton.plt-btn-yellow:checked {
+	background-color: rgb(255,255,191);
+}
+QPushButton.plt-btn-blue {
+	background-color: rgb(230,255,255);
+}
+QPushButton.plt-btn-blue:checked {
+	background-color: rgb(199,255,255);
+}
+QPushButton.plt-btn-green {
+	background-color: rgb(222,255,222);
+}
+QPushButton.plt-btn-green:checked {
+	background-color: rgb(191,255,191);
+}
+QPushButton.plt-btn-pink {
+	background-color: rgb(255,222,247);
+}
+QPushButton.plt-btn-pink:checked {
+	background-color: rgb(255,191,239);
+}
+QPushButton.tool-btn {
+    border-color:rgb(173,173,173);
+	border-style: solid;
+	border-width: 1px;
+	background-color: rgb(225,225,225);
+}
+QPushButton.tool-btn-hov:hover {
+    border-color:rgb(0,120,215);
+	background-color: rgb(229,241,251);
+}
+QPushButton.tool-btn:checked {
+    border-color:rgb(0,84,153);
+	background-color: rgb(204,228,247);
+}
+QPushButton.edit-head {
+	border-right: 0;
+}
+QLineEdit {
+    padding-left: 4px;
+    border-color:rgb(173,173,173);
+    border-style: solid;
+    border-width: 1px;
+}
+QComboBox:enabled {
+    padding-left: 4px;
+}
+QComboBox:!enabled {
+    padding-left: 0px;
+}
+QComboBox {
+    border-color:rgb(173,173,173);
+    border-style: solid;
+    border-width: 1px;
+}

@@ -1,0 +1,1 @@
+PLUGIN_GROUP_NAME = 'Constant Analysis'

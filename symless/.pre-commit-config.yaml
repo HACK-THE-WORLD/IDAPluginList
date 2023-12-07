@@ -1,0 +1,54 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  # black
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+      - id: black
+        args: # arguments to configure black
+          - --line-length=120
+
+  # isort
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.10.1
+    hooks:
+      - id: isort
+        args: #arguments to configure isort
+          - --profile=black
+
+  # flake8
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        args: # arguments to configure flake8
+          # making flake8 line length compatible with black
+          - --max-line-length=120
+          - --max-complexity=18
+          - --select=B,C,E,F,W,T4,B9
+
+          # these are errors that will be ignored by flake8
+          # check out their meaning here
+          # https://flake8.pycqa.org/en/latest/user/error-codes.html
+          # E203 whitespace before ',', ';', or ':'
+          # E302 expected 2 blank lines, found 1
+          # E402 module level import not at top of file
+          # E501 line too long (82 > 79 characters)
+          # F403 'from foo import *' used; unable to detect undefined names
+          # F405 'foo' may be undefined, or defined from star imports
+          # W503 line break before binary operator
+          - --ignore= \
+            E203, \
+            E302, \
+            E402, \
+            E501, \
+            F403, \
+            F405, \
+            W503, \
+            # end

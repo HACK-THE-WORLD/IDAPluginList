@@ -1,0 +1,8 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+	<qresource prefix="/idaclu">
+		<file>icon_64.png</file>
+		<file>arrow_32.png</file>
+		<file>style.qss</file>
+	</qresource>
+</RCC>
