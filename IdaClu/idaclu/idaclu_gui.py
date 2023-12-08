@@ -385,8 +385,7 @@ class IdaCluDialog(QWidget):
             label_norm = self.updateFilters(label_mode)
 
             if self.env_desc.feat_folders and label_mode == 'folder':
-                ida_utils.change_dir('/')
-                ida_utils.create_folder(label_norm)
+                ida_utils.create_dir(label_norm, is_abs=True)
 
             addr_queue = self.getLabelAddrSet()
             for func_addr in addr_queue:

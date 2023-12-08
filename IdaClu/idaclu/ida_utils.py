@@ -20,6 +20,34 @@ except ImportError:
 
 from idaclu import ida_shims
 
+
+def manage_dir(dir_name, operation, is_abs):
+    func_dir = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)
+    dir_ops = {
+        'mkdir': False,
+        'rmdir': True,
+        'chdir': True
+    }
+    if is_abs:
+        func_dir.chdir('/')
+    is_dir = func_dir.isdir(dir_name)
+    if is_dir if dir_ops[operation] else not is_dir:
+        if operation in dir_ops.keys():
+            getattr(func_dir, operation)(dir_name)
+        else:
+            raise Exception('%s - invalid ida_dirtree operation' % (operation))
+        return True
+    return False
+
+def create_dir(dir_name, is_abs=True):
+    return manage_dir(dir_name, 'mkdir', is_abs)
+    
+def remove_dir(dir_name, is_abs=True):
+    return manage_dir(dir_name, 'rmdir', is_abs)
+    
+def change_dir(dir_name, is_abs=True):
+    return manage_dir(dir_name, 'chdir', is_abs)
+
 # logic / prefixes '%' and '_' are the opposites:
 # 1. '%' - has always single occurence, '_' - not;
 # 2. '%' cannot appear at the very beginning of a function name, '_' - can;
@@ -66,14 +94,6 @@ def refresh_ui():
     widget_vdui = ida_shims.get_widget_vdui(widget)
     if widget_vdui:
         widget_vdui.refresh_ctext()
-
-def create_folder(merge_name):
-    func_dir = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)
-    func_dir.chdir('/')
-    if not func_dir.isdir(merge_name):
-        func_dir.mkdir(merge_name)
-        return True
-    return False
 
 def graph_down(ea, path=set()):
     path.add(ea)
@@ -265,7 +285,3 @@ def set_func_folder(func_ref, folder_src, folder_dst):
     func_dir = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)
     func_dir.chdir('/')
     func_dir.rename(func_src, func_dst)
-
-def change_dir(dir):
-    func_dir = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)
-    func_dir.chdir(dir)
