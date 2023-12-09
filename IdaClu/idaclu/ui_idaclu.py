@@ -142,7 +142,7 @@ class Ui_PluginDialog(object):
 
         self.FolderFilterLayout.addItem(self.sFolderFilterBeg)
 
-        self.wFolderFilter = FilterInputGroup(u"Folders", u"Pick folders...", self.FiltersGroup)
+        self.wFolderFilter = FilterInputGroup(u"Folders", u"Pick folders...", self.env_desc, self.FiltersGroup)
         self.wFolderFilter.setObjectName(u"wFolderFilter")
         self.wFolderFilter.setMinimumSize(QSize(0, 26))
         self.wFolderFilter.setMaximumSize(QSize(16777215, 26))
@@ -166,7 +166,7 @@ class Ui_PluginDialog(object):
 
         self.PrefixFilterLayout.addItem(self.sPrefixFilterBeg)
 
-        self.wPrefixFilter = FilterInputGroup([u"Prefixes (i)", u"Prefixes (e)"], u"Pick prefixes...", self.FiltersGroup)
+        self.wPrefixFilter = FilterInputGroup([u"Prefixes (i)", u"Prefixes (e)"], u"Pick prefixes...", self.env_desc, self.FiltersGroup)
         self.wPrefixFilter.setObjectName(u"wPrefixFilter")
         self.wPrefixFilter.setMinimumSize(QSize(0, 26))
         self.wPrefixFilter.setMaximumSize(QSize(16777215, 26))

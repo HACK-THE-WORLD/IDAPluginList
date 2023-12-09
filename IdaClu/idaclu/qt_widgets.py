@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from collections import OrderedDict
 
 from idaclu.qt_shims import (
     QComboBox,
@@ -274,12 +275,14 @@ class PaletteTool(QWidget):
 
 
 class FilterInputGroup(QWidget):
-    def __init__(self, names, pholder, parent=None):
+    def __init__(self, names, pholder, env_desc, parent=None):
         super(FilterInputGroup, self).__init__(parent)
 
-        self._items = []
+        self._items = OrderedDict()
 
-        if isinstance(names, str):
+        self.env_desc = env_desc
+        is_unicode = isinstance(names, basestring) if env_desc.ver_py == 2 else isinstance(names, str)
+        if is_unicode:
             self._has_state = False
             names = [names]
         elif isinstance(names, list) and len(names) == 2:
@@ -330,19 +333,77 @@ class FilterInputGroup(QWidget):
     def setPlaceholder(self, pholder):
         self._select.lineEdit().setPlaceholderText(pholder)
 
-    def addItems(self, items):
-        self._items.extend(items)
-        self._select.addItems(self._items)
-        if len(self._items):
-            self._select.setEnabled(True)
+    def addItems(self, items, is_sorted=False):
+        for tpl in items:
+            self.addItem(tpl, False)
+        if len(items):
+            self.setEnabled(True)
+            if is_sorted:
+                self.sortItems()
         else:
-            self._select.setEnabled(False)
+            self.setEnabled(False)
 
-    def addItemNew(self, item, is_sorted=False):
-        self._select.addItemNew(item, userData=None, is_sorted=True)
+    def sortItems(self):
+        self._items = OrderedDict(sorted(self._items.items()))
+        self._select.sortItems()
+
+    def addItem(self, item, is_sorted=False, is_unique=False):
+        is_skip = False
+        txt, num, col = None, None, None
+        if isinstance(item, str):
+            item = (item)
+        for t in item:
+            if isinstance(t, str):
+                txt = t
+            if isinstance(t, int):
+                num = t
+            if isinstance(t, tuple):
+                col = t
+        if txt in self._items:
+            if not is_unique:
+                self._items[txt] += num
+            else:
+                is_skip = True
+        else:
+            self._items[txt] = num
+        if num:
+            txt = '{} ({})'.format(txt, num)
+        if not is_skip:
+            self._select.addItem((txt, col), userData=None)
+        if is_sorted:
+            self.sortItems()
+
+    def chgItems(self, changelog, is_sorted=False):
+        rem_items = []
+        for mod in changelog:
+            for lbl, val in changelog[mod].items():
+                idx = list(self._items.keys()).index(lbl) if lbl in self._items else -1
+                if mod == 'sub':
+                    self._items[lbl] -= val
+                    if self._items[lbl] == 0:
+                        self._items.pop(lbl)
+                        sel_count = len(self.getData())
+                        self._select.removeItem(idx)
+                        if sel_count == 1:
+                            self.setText('')
+                        else:
+                            self._select.updateLineEditField()
+                        rem_items.append(lbl)
+                        continue
+                elif mod == 'add':
+                    if lbl in self._items:
+                        self._items[lbl] += val
+                    else:
+                        self._items[lbl] = val
+                new_entry = '{} ({})'.format(lbl, self._items[lbl])
+                self._select.chgItem(idx, new_entry)
+
+        if is_sorted:
+            self.sortItems()
+        return rem_items
 
     def setEnabled(self, state=False):
-        self._select.setEnabled()
+        self._select.setEnabled(state)
 
     def removeSelf(self):
         self._label.setParent(None)
@@ -353,7 +414,11 @@ class FilterInputGroup(QWidget):
         self._select.lineEdit().setText(text)
 
     def getData(self):
-        return self._select.getData().split('; ')
+        entries = self._select.getData().split('; ')
+        data = []
+        for e in entries:
+            data.append(e.split(' ')[0])
+        return data
 
     def toggleMode(self):
         self._state = not self._state
@@ -380,34 +445,27 @@ class CheckableComboBox(QComboBox):
         super(CheckableComboBox, self).hidePopup()
         self.startTimer(100)
 
-    def addItems(self, items, itemList=None):
-        for indx, text in enumerate(items):
-            try:
-                data = itemList[indx]
-            except (TypeError, IndexError):
-                data = None
-            self.addItem(text, data, is_sorted=False)
-        self.sortItems()
-
-    def addItemNew(self, text, userData=None, is_sorted=False):
-        for row in range(self.model().rowCount()):
-            item = self.model().item(row)
-            if ((item and (item.text() == text)) or
-                (userData and item.data() == userData)):
-                return False
-        self.addItem(text, userData, is_sorted)
-        return True
-
-    def addItem(self, text, userData=None, is_sorted=False):
+    def addItem(self, entry, userData=None):
+        text, colr = entry
         item = QStandardItem()
         item.setText(text)
         if not userData is None:
             item.setData(userData)
+        if not colr is None:
+            item.setBackground(QColor(*colr))
         item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
         item.setData(Qt.Unchecked, Qt.CheckStateRole)
         self.model().appendRow(item)
-        if is_sorted:
-            self.sortItems()
+
+    def chgItem(self, row, text):
+        if row == -1:
+            self.addItem((text, None))
+        else:
+            item = self.model().item(row)
+            item.setData(text, role=Qt.DisplayRole)
+            
+    def removeItem(self, row):
+        self.model().removeRow(row)
 
     def sortItems(self):
         self.model().sort(0)

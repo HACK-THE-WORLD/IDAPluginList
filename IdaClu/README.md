@@ -94,16 +94,31 @@ While the plugin itself doesn't need external packages, some *sub-plugin scripts
 
 ![miss](./img/miss.png)
 
-Two bundled ***Function Similarity*** section scripts require ***py-tlsh*** and ***ssdeep***. Follow these instructions if you need these scripts:
+Follow these instructions if you need these *sub-plugin scripts*:
 
-```bash
-> pip install py-tlsh
+- ***py-tlsh***
 
-# do not: pip install ssdeep
-> git clone https://github.com/MacDue/ssdeep-windows-32_64
-> cd ssdeep-windows-32_64-master
-> python setup.py install
-```
+    ```bash
+    > pip install py-tlsh
+    ```
+
+- ***ssdeep***
+
+    ```bash
+    # DO NOT: pip install ssdeep
+    > git clone https://github.com/MacDue/ssdeep-windows-32_64
+    > cd ssdeep-windows-32_64-master
+    > python setup.py install
+    ```
+
+- ***yara-python***
+
+    ```bash
+    # IDA >v7.x
+    > pip install yara-python
+    # IDA v6.x
+    > pip install yara-python==3.11.0
+    ```
 
 ### Hint
 

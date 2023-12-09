@@ -1,3 +1,4 @@
+import collections
 import re
 #
 import idc
@@ -55,6 +56,9 @@ def change_dir(dir_name, is_abs=True):
 # 4. '%' are the prefixes added automatically, '_' - manually
 
 def get_func_prefs(func_name, is_dummy=True):
+    if ((func_name.startswith('?') and '@' in func_name) or 
+        func_name.startswith('_')):
+        return []
     pfx_dummy = 'sub_'
     prefs = []
     pfx = ''
@@ -63,7 +67,7 @@ def get_func_prefs(func_name, is_dummy=True):
     while idx < len(func_name):
         char = func_name[idx]
         if char == '%':
-            prefs.append('{}_'.format(pfx))
+            prefs.append(pfx)
             pfx = ''
 
         elif char == "_":
@@ -72,9 +76,10 @@ def get_func_prefs(func_name, is_dummy=True):
                 pfx_len += 1
 
             if idx != 0:
-                pfx += func_name[idx:idx+pfx_len]
+                # uncomment, if underscore tail in pfx is needed
+                # pfx += func_name[idx:idx+pfx_len]
                 if (not any(a in pfx for a in ['@', '$', '?', '-', '+']) and 
-                    not re.match('^[0-9]+_', pfx)):
+                    not re.match('^[0-9]+', pfx) and pfx != ''):
                     prefs.append(pfx)
                 pfx = ''
                 
@@ -87,6 +92,19 @@ def get_func_prefs(func_name, is_dummy=True):
     if not is_dummy and pfx_dummy in prefs:
         prefs.remove(pfx_dummy)
     return prefs
+
+def get_cleaned_funcname(func_name, is_diff=False):
+    bad_part = ''
+    for char in func_name:
+        if not char.isalpha():
+            bad_part += char
+        else:
+            break
+
+    if is_diff:
+        return bad_part
+    else:
+        return func_name[len(bad_part):]
 
 def refresh_ui():
     ida_shims.refresh_idaview_anyway()
@@ -219,6 +237,31 @@ def is_function_leaf(func_ref):
             return True  # until some "calling activity" is discovered inside,
                          # each function is considered as a "leaf"-function
 
+def get_dir_metrics(root_dir):
+    func_dir = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)
+    ite = ida_dirtree.dirtree_iterator_t()
+
+    s_folders = [root_dir]
+    u_folders = collections.defaultdict(int)
+
+    while len(s_folders):
+        curr_path = s_folders.pop()
+        func_dir.chdir(curr_path)
+        status = func_dir.findfirst(ite, "*")
+
+        while status:
+            entry_name = func_dir.get_entry_name(func_dir.resolve_cursor(ite.cursor))
+            cursor_abspath = func_dir.get_abspath(ite.cursor)
+            if func_dir.isdir(cursor_abspath):
+                current_dir_new = '{}/{}'.format('' if curr_path == '/' else curr_path, entry_name)
+                s_folders.append(current_dir_new)
+            elif func_dir.isfile(cursor_abspath):
+                func_addr = idaapi.get_name_ea(0, entry_name)
+                u_folders[curr_path] += 1   
+            status = func_dir.findnext(ite)
+
+    return list(u_folders.items())
+
 def get_func_dirs(root_dir):
     func_dir = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)
     ite = ida_dirtree.dirtree_iterator_t()
@@ -242,7 +285,7 @@ def get_func_dirs(root_dir):
 
     return u_folders
 
-def get_dir_funcs(folders):
+def get_dir_funcs(folders, is_root=True):
     func_dir = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)
     ite = ida_dirtree.dirtree_iterator_t()
     idx = 0
@@ -257,7 +300,10 @@ def get_dir_funcs(folders):
             entry_name = func_dir.get_entry_name(func_dir.resolve_cursor(ite.cursor))
             func_addr = ida_shims.get_name_ea(0, entry_name)
             if func_dir.isfile(func_dir.get_abspath(ite.cursor)):
-                if curr_path != '/':
+                if is_root == False and curr_path == '/':
+                    # if only the functions with non-standard dir are needed
+                    pass
+                else:
                     funcs[func_addr] = curr_path
             status = func_dir.findnext(ite)
         idx += 1

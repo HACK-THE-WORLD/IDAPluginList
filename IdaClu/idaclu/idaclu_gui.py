@@ -75,10 +75,9 @@ class IdaCluDialog(QWidget):
         # values to initialize the corresponding filter
 
         if self.env_desc.feat_folders:
-            self.folders = ida_utils.get_func_dirs('/')
-            self.folders_funcs = ida_utils.get_dir_funcs(self.folders)
+            folders = ida_utils.get_func_dirs('/')
+            self.folders_funcs = ida_utils.get_dir_funcs(folders)
 
-        self.prefixes = self.getFuncPrefs(is_dummy=True)
         self.sel_dirs = []
         self.sel_prfx = []
         self.sel_colr = []
@@ -121,26 +120,29 @@ class IdaCluDialog(QWidget):
 
     def getFuncPrefs(self, is_dummy=False):
         pfx_afacts = ['%', '_']
-        prefs = set()
+        prefs = collections.defaultdict(int)
         for func_addr in idautils.Functions():
             func_name = ida_shims.get_func_name(func_addr)
             func_name = func_name.lstrip('_')
             if any(pa in func_name for pa in pfx_afacts):
                 func_prefs = ida_utils.get_func_prefs(func_name, is_dummy)
-                prefs.update(func_prefs)
-        return list(prefs)
+                for pfx in func_prefs:
+                    prefs[pfx] += 1
+        return list(prefs.items())
 
     def viewSelChanged(self):
         self.ui.wLabelTool.setEnabled(True)
         self.ui.wColorTool.setEnabled(True)
 
     def initPrefixFilter(self):
-        self.ui.wPrefixFilter.addItems(self.prefixes)
+        prefixes = self.getFuncPrefs(is_dummy=True)
+        self.ui.wPrefixFilter.addItems(prefixes, True)
         self.ui.wPrefixFilter.setText("")
 
     def initFoldersFilter(self):
         if self.env_desc.feat_folders:
-            self.ui.wFolderFilter.addItems(self.folders)
+            folders = ida_utils.get_dir_metrics('/')
+            self.ui.wFolderFilter.addItems(folders, True)
             self.ui.wFolderFilter.setText("")
         else:
             self.ui.wFolderFilter.removeSelf()
@@ -164,6 +166,7 @@ class IdaCluDialog(QWidget):
             return custom_sort
 
         sender_button = self.sender()
+        self.rec_indx.clear()
 
         full_spec_name = sender_button.objectName()
         elem, cat, plg = full_spec_name.split('#')
@@ -366,15 +369,21 @@ class IdaCluDialog(QWidget):
         if cell_data and cell_data.startswith('0x'):
             idaapi.jumpto(plg_utils.from_hex(cell_data))
 
-    def updateFilters(self, label_mode):
+    def getLabelNorm(self, label_mode):
         label_name = None
         if label_mode == 'folder':
             label_name = self.ui.wLabelTool.getLabelName(prfx="/")
-            self.ui.wFolderFilter.addItemNew(label_name, is_sorted=True)
         elif label_mode == 'prefix':
             label_name = self.ui.wLabelTool.getLabelName(sufx="_")
-            self.ui.wPrefixFilter.addItemNew(label_name, is_sorted=True)
         return label_name
+            
+    def updateFilters(self, label_mode, changelog):
+        if label_mode == 'folder':
+            fback = self.ui.wFolderFilter.chgItems(changelog, is_sorted=True)
+            for fdir in fback:
+                ida_utils.remove_dir(fdir)
+        elif label_mode == 'prefix':
+            self.ui.wPrefixFilter.chgItems(changelog, is_sorted=True)
 
     def isDataSelected(self):
         return self.ui.rvTable.selectionModel().hasSelection()
@@ -382,12 +391,16 @@ class IdaCluDialog(QWidget):
     def addLabel(self):
         if self.isDataSelected():
             label_mode = self.ui.wLabelTool.getLabelMode()
-            label_norm = self.updateFilters(label_mode)
+            label_norm = self.getLabelNorm(label_mode)
 
             if self.env_desc.feat_folders and label_mode == 'folder':
                 ida_utils.create_dir(label_norm, is_abs=True)
 
             addr_queue = self.getLabelAddrSet()
+            changelog = {
+                'sub': collections.defaultdict(int),
+                'add': collections.defaultdict(int),
+            }
             for func_addr in addr_queue:
                 func_name = ida_shims.get_func_name(func_addr)
 
@@ -400,14 +413,20 @@ class IdaCluDialog(QWidget):
                             func_name_new = plg_utils.add_prefix(func_name, label_norm, False)
                             ida_shims.set_name(func_addr, func_name_new, idaapi.SN_CHECK)
                             self.ui.rvTable.model().setData(indx_child, func_name_new)
+                            for tkn in label_norm.split('_'):
+                                if tkn != '':
+                                    changelog['add'][tkn] += 1
                     else:  # == 'folder'
                         folder_src = self.folders_funcs.get(func_addr, '/')
-                        ida_utils.set_func_folder(func_addr, folder_src, label_norm)
-                        self.ui.rvTable.model().setData(indx_child, label_norm)
+                        if label_norm != folder_src:
+                            self.folders_funcs[func_addr] = label_norm
+                            changelog['sub'][folder_src] += 1
+                            changelog['add'][label_norm] += 1
+                            ida_utils.set_func_folder(func_addr, folder_src, label_norm)
+                            self.ui.rvTable.model().setData(indx_child, label_norm)
 
-            if self.env_desc.feat_folders:
-                self.folders = ida_utils.get_func_dirs('/')
-                self.folders_funcs = ida_utils.get_dir_funcs(self.folders)
+            if len(changelog['sub']) or len(changelog['add']):
+                self.updateFilters(label_mode, changelog)
 
             ida_utils.refresh_ui()
 
@@ -415,6 +434,10 @@ class IdaCluDialog(QWidget):
         if self.ui.rvTable.selectionModel().hasSelection():
             indexes = [index for index in self.ui.rvTable.selectionModel().selectedRows()]
             data = [index.sibling(index.row(), self.getFuncAddrCol()).data() for index in indexes]
+            changelog = {
+                'sub': collections.defaultdict(int),
+                'add': collections.defaultdict(int),
+            }
             for idx, addr_field in enumerate(set(data)):
                 func_addr = int(addr_field, base=16)
                 func_name = ida_shims.get_func_name(func_addr)
@@ -425,18 +448,24 @@ class IdaCluDialog(QWidget):
                     label_mode = self.ui.wLabelTool.getLabelMode()
                     if label_mode == 'prefix':
                         func_prefs = ida_utils.get_func_prefs(func_name, True)
-                        if len(func_prefs) >= 1 and func_prefs[0] != 'sub_':
-                            # get last prefix
-                            name_token = str(func_prefs[0]).replace('_', '%')
-                            func_name_new = func_name.replace(name_token, '')
+                        last_pref = func_prefs[0]
+                        if len(func_prefs) >= 1 and last_pref != 'sub':
+                            func_name_new = re.sub('{0}%|{0}_'.format(last_pref), '', func_name, 1)
+                            # cleanup in case of next bad prefix in front
+                            func_name_new = ida_utils.get_cleaned_funcname(func_name_new)
                             ida_shims.set_name(func_addr, func_name_new, idaapi.SN_NOWARN)
                             self.ui.rvTable.model().setData(indx_child, func_name_new)
+                            changelog['sub'][last_pref] += 1
                     elif label_mode == 'folder':
                         func_fldr = self.folders_funcs.get(func_addr, '/')
+                        changelog['sub'][func_fldr] += 1
+                        changelog['add']['/'] += 1
                         ida_utils.set_func_folder(func_addr, func_fldr, '/')
                         self.ui.rvTable.model().setData(indx_child, '/')
+                        self.folders_funcs[func_addr] = '/'
                     else:
                         ida_shims.msg('ERROR: unknown label mode')
+            self.updateFilters(label_mode, changelog)
             ida_utils.refresh_ui()
 
     def showContextMenu(self, point):

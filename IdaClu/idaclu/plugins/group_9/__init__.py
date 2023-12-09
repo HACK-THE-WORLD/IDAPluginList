@@ -1,0 +1,1 @@
+PLUGIN_GROUP_NAME = 'Yara Rules'
