@@ -5,6 +5,7 @@ import idaapi
 import idautils
 #
 from idaclu import ida_shims
+from idaclu import ida_utils
 
 
 SCRIPT_NAME = 'Xref Source'
@@ -60,7 +61,10 @@ def is_func_expl(func_addr):
 def get_func_type_src(func_addr):
     if is_func_leaf(func_addr):
         return 'leaf'
-    elif is_func_expl(func_addr):
+    is_wrap, wrap_mod = ida_utils.is_func_wrapper(func_addr)
+    if is_wrap:
+        return "wrap_{}".format("_".join(sorted(wrap_mod)))
+    if is_func_expl(func_addr):
         return 'expl'
     else:
         return 'impl'
@@ -77,6 +81,8 @@ def get_data(func_gen=None, env_desc=None, plug_params=None):
         report['data'][func_type].append(func_addr)
         report['stat'][func_type] += 1
 
+    report['data'] = collections.OrderedDict(sorted(report['data'].items()))
+    report['stat'] = collections.OrderedDict(sorted(report['stat'].items()))
     return report if __name__ == '__main__' else report['data']
 
 def debug():

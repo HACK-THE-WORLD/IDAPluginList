@@ -331,3 +331,149 @@ def set_func_folder(func_ref, folder_src, folder_dst):
     func_dir = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)
     func_dir.chdir('/')
     func_dir.rename(func_src, func_dst)
+
+def is_in_interval(addr, func_ivals, is_strict):
+    if is_strict:
+        return any(beg < addr < end for beg, end in func_ivals)
+    else:
+        return any(beg <= addr <= end for beg, end in func_ivals)
+
+def get_func_ivals(func_addr):
+    return [(func_beg, func_end) for func_beg, func_end in idautils.Chunks(func_addr)]
+
+def is_addr_func(addr, func_addr, is_chunks, is_strict):
+    func_ivals = None
+    if is_chunks:
+        func_ivals = get_func_ivals(func_addr)
+    else:
+        func_beg = func_addr
+        func_end = idc.get_func_attr(func_addr, idc.FUNCATTR_END)
+        func_ivals = [(func_beg, func_end)]
+
+    return is_in_interval(addr, func_ivals, is_strict)
+
+def is_func_wrapper(func_addr, is_precise=True):
+    """
+    Wrapper functions are typically short.
+    x86_64 instructions can be up to 15 bytes in length, at average - 4/5;
+    The defined frame is 64b, then a very rough approximation is as follows:
+        15 bytes/instr ->  4 instr/func ->  1- 2 statements (min)
+         5 bytes/instr -> 12 instr/func ->  4- 6 statements
+         4 bytes/instr -> 16 instr/func ->  5- 8 statements
+         2 bytes/instr -> 32 instr/func -> 10-11 statements (max)
+    It is not sufficient to look up solely for function size,
+    important to have instruction count boundary as well,
+    because of the function chunks e.g. func_size=14 bytes, inst_count=99;
+    Small function with many instructions is either "super slim" function,
+    or it has unaccounted chunks.
+    """
+
+    flags = ida_shims.get_func_flags(func_addr)
+    func_items = list(idautils.FuncItems(func_addr))
+
+    api_pairs = [
+        ('EnterCriticalSection', 'LeaveCriticalSection'),
+        ('__SEH_prolog', '__SEH_epilog'),
+        ('__lock', '__unlock'),
+        ('__lockexit', '__unlockexit'),
+        ('__lock_fhandle', '__unlock_fhandle'),
+        ('__lock_file', '__unlock_file'),
+        ('__lock_file2', '__unlock_file2'),
+        ('_malloc', '_free'),
+        ('_calloc', '_free'),
+        ('_realloc', '_free'),
+        ('___initstdio', '___endstdio'),
+        ('__Init_thread_header', '__Init_thread_footer'),
+        ('_fopen', '_fclose'),
+        ('CreateMutexA', 'ReleaseMutex'),
+        ('CreateMutexW', 'ReleaseMutex'),
+        ('CreateSemaphoreA', 'ReleaseSemaphore'),
+        ('CreateSemaphoreW', 'ReleaseSemaphore'),
+        ('CreateThread', 'ExitThread'),
+        ('AcquireSRWLockExclusive ', 'ReleaseSRWLockExclusive'),
+        ('InitializeSRWLock  ', 'DeleteSRWLock'),
+        ('CreateFileA', 'CloseHandle'),
+        ('CreateFileW', 'CloseHandle'),
+        ('VirtualProtect', 'VirtualFree'),
+        ('HeapAlloc', 'HeapFree'),
+        ('HeapReAlloc', 'HeapFree'),
+        ('HeapCreate', 'HeapDestroy'),
+        ('RegOpenKeyA', 'RegCloseKey'),
+        ('RegOpenKeyW', 'RegCloseKey'),
+        ('TlsAlloc', 'TlsFree'),
+        ('GlobalLock', 'GlobalUnlock'),
+        ('BeginPaint', 'EndPaint'),
+        ('OpenProcess', 'ExitProcess'),
+        ('CreateWindowExA', 'DestroyWindow'),
+        ('CreateWindowExW', 'DestroyWindow'),
+        ('___sbh_alloc_block', '___sbh_free_block')
+    ]
+    api_pair_beg = [p[0] for p in api_pairs]
+    api_pair_end = [p[1] for p in api_pairs]
+
+    func_beg = func_addr
+    func_end = ida_shims.get_func_attr(func_addr, idc.FUNCATTR_END)
+
+    call_num = 0
+    pair_unm = []
+    call_reg = set()
+    func_nam = ida_shims.get_name(func_addr)
+    func_mod = set()
+    func_res = False
+    # exclude recursive calls
+    call_reg.add(func_nam)
+    for inst_addr in idautils.FuncItems(func_addr):
+        if is_precise:
+            mnem = ida_shims.print_insn_mnem(inst_addr)
+            oprd_val = ida_shims.get_operand_value(inst_addr, 0)
+            oprd_typ = ida_shims.get_operand_type(inst_addr, 0)
+            if (mnem == 'jmp' and 
+                not is_addr_func(oprd_val, func_addr, is_precise, True)):
+                call_nam = ida_shims.get_name(oprd_val)
+                # exclude jump tables;
+                # consider the case when there is more than one jmp/call inst.
+                # pointing to the same function: call x, call x, jmp x
+                if not call_nam.startswith('loc_') and not call_nam in call_reg:
+                    call_num += 1
+                    call_reg.add(call_nam)
+
+            if mnem == 'call':
+                if oprd_typ in [idc.o_mem, idc.o_far, idc.o_near]:
+                    call_dst = list(idautils.CodeRefsFrom(inst_addr, 0))
+                    if len(call_dst):
+                        call_nam = ida_shims.get_name(call_dst[0])
+                        if call_nam in api_pair_beg:
+                            pair_unm.append(api_pair_beg.index(call_nam))
+                        elif call_nam in api_pair_end:
+                            elem_idx = api_pair_end.index(call_nam)
+                            if elem_idx in pair_unm:
+                                # there are numerous pair APIs of the form:
+                                # alloc/free, open/close, create/destroy;
+                                # consider the impact of a wrapping pair as - 0
+                                pair_unm.remove(elem_idx)
+                            else:
+                                pair_unm.append(elem_idx)
+                        else:
+                            if not call_nam in call_reg and not call_nam in ['j__free']:
+                                call_num += 1
+                                call_reg.add(call_nam)
+                elif is_precise and (oprd_typ in [idc.o_displ]):
+                    dasm_line = ida_shims.generate_disasm_line(inst_addr, idaapi.GENDSM_FORCE_CODE)
+                    call_vft = ' '.join(' '.join(dasm_line.split()).split()[1:])
+                    if not call_vft in call_reg:
+                        func_mod.add("ptr")
+                        call_num += 1
+                        call_reg.add(call_vft)
+
+    if (call_num + len(pair_unm)) == 1:
+        func_res = True
+        if ((func_end - func_addr) > 0 and (func_end - func_addr) < 64) and len(func_items) <= 32:
+            func_mod.add("small")
+        else:
+            # an attempt to collect wrapper functions that
+            # otherwise will be missed due to too strict size constraint;
+            # they are not that simple, have some additional logic
+            # that probably should be considered separately
+            func_mod.add("large")
+
+    return (func_res, list(func_mod))
