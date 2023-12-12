@@ -339,7 +339,11 @@ def is_in_interval(addr, func_ivals, is_strict):
         return any(beg <= addr <= end for beg, end in func_ivals)
 
 def get_func_ivals(func_addr):
-    return [(func_beg, func_end) for func_beg, func_end in idautils.Chunks(func_addr)]
+    return [(func_beg, func_end) for func_beg, func_end in ida_shims.get_chunk_eas(func_addr)]
+
+def get_chunk_count(func_addr):
+    num_chunks = len(get_func_ivals(func_addr))
+    return num_chunks
 
 def is_addr_func(addr, func_addr, is_chunks, is_strict):
     func_ivals = None

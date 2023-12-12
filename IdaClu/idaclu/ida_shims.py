@@ -1001,8 +1001,7 @@ def get_ida_subdirs(sub_folder):
         SYS_PLUGIN_PATH = os.path.join(idaapi.idadir(idaapi.PLG_SUBDIR))
         return [USR_PLUGIN_PATH, SYS_PLUGIN_PATH]
 
-
-def _is_func_chunked(func_addr):
+def get_chunk_eas(func_addr):
     """
     Check if a function is divided into chunks.
     """
@@ -1010,27 +1009,27 @@ def _is_func_chunked(func_addr):
     # Idea for this code is from:
     # http://code.google.com/p/idapython/source/browse/trunk/python/idautils.py?r=344
 
-    num_chunks = 0
     func_iter = idaapi.func_tail_iterator_t(idaapi.get_func(func_addr))
     status = func_iter.main()
     while status:
         chunk = func_iter.chunk()
-        num_chunks += 1
-        # yield (chunk.startEA, chunk.endEA)
+        yield (start_ea(chunk), end_ea(chunk))
         status = func_iter.next()
 
-    return (num_chunks > 1)
-
+def _is_func_chunked(func_addr):
+    for eas in get_chunk_eas(func_addr):
+        return True
+    return False
 
 def calc_func_size(func_desc):
-    beg_addr = start_ea(func_desc)
     if idaapi.IDA_SDK_VERSION >= 720:
         return ida_funcs.calc_func_size(func_desc)
     else:
+        beg_addr = start_ea(func_desc)
         if _is_func_chunked(beg_addr):
             func_size = 0
             for beg, end in idautils.Chunks(beg_addr):
-                func_size = end - beg
+                func_size += end - beg
             return func_size
         else:
             end_addr = end_ea(func_desc)
