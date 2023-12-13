@@ -309,6 +309,7 @@ They will be carefully considered and their implementation is highly likely to b
 - [***Markus 'gaasedelen' Gaasedelen***](https://github.com/gaasedelen) for [***DrCov file format parser***](https://github.com/gaasedelen/lighthouse/blob/develop/plugins/lighthouse/reader/parsers/drcov.py)
 - [***Willi Ballenthin***](https://gist.github.com/williballenthin) of *Mandiant* for [***PoC of PyQt-shim script***](https://gist.github.com/williballenthin/277eedca569043ef0984) to support both ***PySide (IDA <v6.9)*** and ***PyQt (IDA >=v6.9)***
 - Guys from [***Gray Hat Academy***](https://github.com/grayhatacademy) for [***PoC of IDAPython-shim script***](https://github.com/grayhatacademy/ida/blob/master/plugins/shims/ida_shims.py) to support ***v6.x-v7.x*** versions of ***IDAPython API***
+- [***mr.d0x***](https://github.com/mrd0x) for the original idea of ***Windows API*** classification demonstrated on [***MalAPI.io***](https://malapi.io/)
 
 ## Version History
 

@@ -481,3 +481,16 @@ def is_func_wrapper(func_addr, is_precise=True):
             func_mod.add("large")
 
     return (func_res, list(func_mod))
+
+def is_func_thunk(func_addr):
+    func_flags = ida_shims.get_func_flags(func_addr)
+    return func_flags & idaapi.FUNC_THUNK
+
+def get_code_refs_to(addr):
+    return set([cref for cref in idautils.CodeRefsTo(addr, 0)])
+
+def get_data_refs_to(addr):
+    return set([dref for dref in idautils.DataRefsTo(addr)])
+
+def get_refs_to(addr):
+    return iter(get_code_refs_to(addr).union(get_data_refs_to(addr)))
