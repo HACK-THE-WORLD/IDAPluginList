@@ -30,6 +30,6 @@ IDA插件集合，含项目名称及项目地址。
 7. PDB插件修复增强：https://github.com/sonyps5201314/pdb
 8. 使用ChatGPT来帮助IDA进行反编译 https://github.com/JusticeRage/Gepetto
 9. 用于对相似函数进行分组：https://github.com/harlamism/IdaClu
-10. 集成Ghidra于IDA上的插件，通过F3即可调用：https://github.com/airbus-cert/Yagi
-11. 集成Ghidra于IDA上的插件：https://github.com/cseagle/blc
+10. 集成Ghidra于IDA上的插件，通过F3即可调用（目前只支持7.7）：https://github.com/airbus-cert/Yagi
+11. 集成Ghidra于IDA上的插件（支持8.3）：https://github.com/cseagle/blc
 
