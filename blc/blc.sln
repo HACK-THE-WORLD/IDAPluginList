@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.32802.440
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blc", "blc.vcxproj", "{8E7ACC53-0733-45E9-BB24-90D2E9D93988}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Release|x64 = Release|x64
+		Release64|x64 = Release64|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8E7ACC53-0733-45E9-BB24-90D2E9D93988}.Release|x64.ActiveCfg = Release|x64
+		{8E7ACC53-0733-45E9-BB24-90D2E9D93988}.Release|x64.Build.0 = Release|x64
+		{8E7ACC53-0733-45E9-BB24-90D2E9D93988}.Release64|x64.ActiveCfg = Release64|x64
+		{8E7ACC53-0733-45E9-BB24-90D2E9D93988}.Release64|x64.Build.0 = Release64|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C800F437-C3C2-42BB-976C-7EDE6620C773}
+	EndGlobalSection
+EndGlobal

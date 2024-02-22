@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release64|x64">
+      <Configuration>Release64</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8E7ACC53-0733-45E9-BB24-90D2E9D93988}</ProjectGuid>
+    <RootNamespace>blc</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release64|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <UseOfAtl>Static</UseOfAtl>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release64|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release64|x64'">false</LinkIncremental>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.dll</TargetExt>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release64|x64'">.dll</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release64|x64'">
+    <TargetName>$(ProjectName)64</TargetName>
+    <OutDir>bin</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>bin</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TypeLibraryName>$(IntDir)\blc.tlb</TypeLibraryName>
+      <HeaderFileName>
+      </HeaderFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_USRDLL;__NT__;__IDP__;MAXSTR=1024;__X64__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeaderOutputFile>$(IntDir)\blc.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)\</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)\</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)\</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <CallingConvention>StdCall</CallingConvention>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0419</Culture>
+    </ResourceCompile>
+    <Link>
+      <AdditionalOptions>
+      </AdditionalOptions>
+      <AdditionalDependencies>ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)$(TargetExt)</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalLibraryDirectories>..\..\lib\x64_win_vc_32;..\..\lib\x64_win_vc_32_pro;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ProgramDatabaseFile>$(IntDir)\blc.pdb</ProgramDatabaseFile>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>$(IntDir)\blc.lib</ImportLibrary>
+    </Link>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>$(IntDir)\blc.bsc</OutputFile>
+    </Bscmake>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release64|x64'">
+    <Midl>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TypeLibraryName>$(IntDir)\blc.tlb</TypeLibraryName>
+      <HeaderFileName>
+      </HeaderFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_USRDLL;__NT__;__IDP__;MAXSTR=1024;__EA64__;__X64__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeaderOutputFile>$(IntDir)\blc.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)\</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)\</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)\</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <CallingConvention>StdCall</CallingConvention>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0419</Culture>
+    </ResourceCompile>
+    <Link>
+      <AdditionalOptions>
+      </AdditionalOptions>
+      <AdditionalDependencies>ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)64$(TargetExt)</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalLibraryDirectories>..\..\lib\x64_win_vc_64;..\..\lib\x64_win_vc_64_pro;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ProgramDatabaseFile>$(IntDir)\blc64.pdb</ProgramDatabaseFile>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>$(IntDir)\blc64.lib</ImportLibrary>
+    </Link>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>$(IntDir)\blc.bsc</OutputFile>
+    </Bscmake>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="action.cc" />
+    <ClCompile Include="address.cc" />
+    <ClCompile Include="architecture.cc" />
+    <ClCompile Include="ast.cc" />
+    <ClCompile Include="block.cc" />
+    <ClCompile Include="blockaction.cc" />
+    <ClCompile Include="callgraph.cc" />
+    <ClCompile Include="capability.cc" />
+    <ClCompile Include="cast.cc" />
+    <ClCompile Include="comment.cc" />
+    <ClCompile Include="condexe.cc" />
+    <ClCompile Include="context.cc" />
+    <ClCompile Include="coreaction.cc" />
+    <ClCompile Include="cover.cc" />
+    <ClCompile Include="cpool.cc" />
+    <ClCompile Include="crc32.cc" />
+    <ClCompile Include="database.cc" />
+    <ClCompile Include="double.cc" />
+    <ClCompile Include="dynamic.cc" />
+    <ClCompile Include="emulate.cc" />
+    <ClCompile Include="emulateutil.cc" />
+    <ClCompile Include="filemanage.cc" />
+    <ClCompile Include="float.cc" />
+    <ClCompile Include="flow.cc" />
+    <ClCompile Include="fspec.cc" />
+    <ClCompile Include="funcdata.cc" />
+    <ClCompile Include="funcdata_block.cc" />
+    <ClCompile Include="funcdata_op.cc" />
+    <ClCompile Include="funcdata_varnode.cc" />
+    <ClCompile Include="globalcontext.cc" />
+    <ClCompile Include="grammar.tab.cc" />
+    <ClCompile Include="graph.cc" />
+    <ClCompile Include="heritage.cc" />
+    <ClCompile Include="ida_arch.cc" />
+    <ClCompile Include="ida_load_image.cc" />
+    <ClCompile Include="ida_scope.cc" />
+    <ClCompile Include="ifacedecomp.cc" />
+    <ClCompile Include="inject_sleigh.cc" />
+    <ClCompile Include="interface.cc" />
+    <ClCompile Include="jumptable.cc" />
+    <ClCompile Include="libdecomp.cc" />
+    <ClCompile Include="loadimage.cc" />
+    <ClCompile Include="marshal.cc" />
+    <ClCompile Include="memstate.cc" />
+    <ClCompile Include="merge.cc" />
+    <ClCompile Include="modelrules.cc" />
+    <ClCompile Include="op.cc" />
+    <ClCompile Include="opbehavior.cc" />
+    <ClCompile Include="opcodes.cc" />
+    <ClCompile Include="options.cc" />
+    <ClCompile Include="override.cc" />
+    <ClCompile Include="paramid.cc" />
+    <ClCompile Include="pcodecompile.cc" />
+    <ClCompile Include="pcodeinject.cc" />
+    <ClCompile Include="pcodeparse.tab.cc" />
+    <ClCompile Include="pcoderaw.cc" />
+    <ClCompile Include="plugin.cc" />
+    <ClCompile Include="prefersplit.cc" />
+    <ClCompile Include="prettyprint.cc" />
+    <ClCompile Include="printc.cc" />
+    <ClCompile Include="printjava.cc" />
+    <ClCompile Include="printlanguage.cc" />
+    <ClCompile Include="rangeutil.cc" />
+    <ClCompile Include="ruleaction.cc" />
+    <ClCompile Include="run.cc" />
+    <ClCompile Include="semantics.cc" />
+    <ClCompile Include="sleigh.cc" />
+    <ClCompile Include="sleighbase.cc" />
+    <ClCompile Include="sleigh_arch.cc" />
+    <ClCompile Include="slghpatexpress.cc" />
+    <ClCompile Include="slghpattern.cc" />
+    <ClCompile Include="slghsymbol.cc" />
+    <ClCompile Include="space.cc" />
+    <ClCompile Include="stringmanage.cc" />
+    <ClCompile Include="subflow.cc" />
+    <ClCompile Include="testfunction.cc" />
+    <ClCompile Include="transform.cc" />
+    <ClCompile Include="translate.cc" />
+    <ClCompile Include="type.cc" />
+    <ClCompile Include="typeop.cc" />
+    <ClCompile Include="unionresolve.cc" />
+    <ClCompile Include="userop.cc" />
+    <ClCompile Include="variable.cc" />
+    <ClCompile Include="varmap.cc" />
+    <ClCompile Include="varnode.cc" />
+    <ClCompile Include="xml.tab.cc" />
+    <ClCompile Include="xml_tree.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="action.hh" />
+    <None Include="address.hh" />
+    <None Include="architecture.hh" />
+    <None Include="block.hh" />
+    <None Include="blockaction.hh" />
+    <None Include="callgraph.hh" />
+    <None Include="capability.hh" />
+    <None Include="cast.hh" />
+    <None Include="comment.hh" />
+    <None Include="condexe.hh" />
+    <None Include="context.hh" />
+    <None Include="coreaction.hh" />
+    <None Include="cover.hh" />
+    <None Include="cpool.hh" />
+    <None Include="crc32.hh" />
+    <None Include="database.hh" />
+    <None Include="double.hh" />
+    <None Include="dynamic.hh" />
+    <None Include="emulate.hh" />
+    <None Include="emulateutil.hh" />
+    <None Include="error.hh" />
+    <None Include="filemanage.hh" />
+    <None Include="float.hh" />
+    <None Include="flow.hh" />
+    <None Include="fspec.hh" />
+    <None Include="funcdata.hh" />
+    <None Include="globalcontext.hh" />
+    <None Include="grammar.hh" />
+    <None Include="graph.hh" />
+    <None Include="heritage.hh" />
+    <None Include="ida_arch.hh" />
+    <None Include="ida_load_image.hh" />
+    <None Include="ida_minimal.hh" />
+    <None Include="ifacedecomp.hh" />
+    <None Include="ifaceterm.hh" />
+    <None Include="inject_sleigh.hh" />
+    <None Include="interface.hh" />
+    <None Include="jumptable.hh" />
+    <None Include="libdecomp.hh" />
+    <None Include="loadimage.hh" />
+    <None Include="memstate.hh" />
+    <None Include="merge.hh" />
+    <None Include="op.hh" />
+    <None Include="opbehavior.hh" />
+    <None Include="opcodes.hh" />
+    <None Include="options.hh" />
+    <None Include="override.hh" />
+    <None Include="paramid.hh" />
+    <None Include="partmap.hh" />
+    <None Include="pcodecompile.hh" />
+    <None Include="pcodeinject.hh" />
+    <None Include="pcodeparse.hh" />
+    <None Include="pcoderaw.hh" />
+    <None Include="plugin.hh" />
+    <None Include="prefersplit.hh" />
+    <None Include="prettyprint.hh" />
+    <None Include="printc.hh" />
+    <None Include="printjava.hh" />
+    <None Include="printlanguage.hh" />
+    <None Include="rangemap.hh" />
+    <None Include="rangeutil.hh" />
+    <None Include="ruleaction.hh" />
+    <None Include="rulecompile.hh" />
+    <None Include="sleigh.hh" />
+    <None Include="sleighbase.hh" />
+    <None Include="sleigh_arch.hh" />
+    <None Include="slghpatexpress.hh" />
+    <None Include="slghpattern.hh" />
+    <None Include="space.hh" />
+    <None Include="subflow.hh" />
+    <None Include="translate.hh" />
+    <None Include="type.hh" />
+    <None Include="typeop.hh" />
+    <None Include="unify.hh" />
+    <None Include="userop.hh" />
+    <None Include="variable.hh" />
+    <None Include="varmap.hh" />
+    <None Include="varnode.hh" />
+    <None Include="xml.hh" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ast.hh" />
+    <ClInclude Include="marshal.hh" />
+    <ClInclude Include="modelrules.hh" />
+    <ClInclude Include="transform.hh" />
+    <ClInclude Include="xml_tree.hh" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

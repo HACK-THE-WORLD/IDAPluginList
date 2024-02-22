@@ -1,0 +1,33 @@
+# backup files
+*.bak
+
+# build residue
+/.vs/*
+/x86/*
+/obj32/*
+/obj64/*
+/bin/*
+
+# Compiled Object files
+*.slo
+*.lo
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Libraries
+*.lai
+*.la
+*.lib
+*.a
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
