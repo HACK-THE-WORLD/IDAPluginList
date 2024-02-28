@@ -592,7 +592,7 @@ bool pdb_til_builder_t::handle_symbol_at_ea(
   }
 
   tpinfo_t tpi;
-  if ( get_symbol_type(&tpi, sym, nullptr) )
+  if ( get_symbol_type(&tpi, sym) )
   {
     // Apparently _NAME_ is a wrong symbol generated for file names
     // It has wrong type information, so correct it
@@ -685,7 +685,7 @@ HRESULT pdb_til_builder_t::handle_function_child(
           qstring name;
           child_sym.get_name(&name);
           tpinfo_t tpi;
-          if ( get_symbol_type(&tpi, child_sym, nullptr) )
+          if ( get_symbol_type(&tpi, child_sym) )
           {
             opinfo_t mt;
             size_t size;

@@ -16,15 +16,18 @@ AS_PRINTF(1, 2) inline void _ddeb(const char *format, ...)
 
 void dump_pdb_udt(const pdb_udt_type_data_t &udt, const char *udt_name)
 {
-  msg("PDEB: struct '%s' total_size %" FMT_Z " taudt_bits 0x%X is_union %s\n",
+  static size_t udt_counter = 0;
+  ++udt_counter;
+  msg("PDEB: %" FMT_Z " struct '%s' total_size %" FMT_Z " taudt_bits 0x%X is_union %s\n",
+      udt_counter,
       udt_name != nullptr ? udt_name : "",
       udt.total_size,
       udt.taudt_bits,
       udt.is_union ? "Yes" : "No");
   for ( int i=0; i < udt.size(); i++ )
   {
-    const pdb_udt_member_t &zudm = udt[i];
-    msg("  %d. offset %" FMT_64 "d size %" FMT_64 "d '%s' type '%s' effalign %d tafld_bits 0x%X fda %d bit_offset %u\n",
+    const pdb_udm_t &zudm = udt[i];
+    msg("  %d. offset 0x%" FMT_64 "X size 0x%" FMT_64 "X '%s' type '%s' effalign %d tafld_bits 0x%X fda %d bit_offset %u\n",
         i,
         zudm.offset,
         zudm.size,
@@ -126,7 +129,7 @@ bool til_builder_t::get_symbol_name(pdb_sym_t &sym, qstring &buf)
 }
 
 //----------------------------------------------------------------------------
-bool til_builder_t::get_symbol_type(tpinfo_t *out, pdb_sym_t &sym, int *p_id)
+bool til_builder_t::get_symbol_type(tpinfo_t *out, pdb_sym_t &sym, uint32 *p_ord)
 {
 #ifdef PDEBSYM
   static int zz=0; ++zz;
@@ -139,11 +142,9 @@ bool til_builder_t::get_symbol_type(tpinfo_t *out, pdb_sym_t &sym, int *p_id)
 #endif
   pdb_sym_t *pType = pdb_access->create_sym();
   pdb_sym_janitor_t janitor_pType(pType);
-  if ( p_id != nullptr )
-    *p_id = -1;
   if ( sym.get_type(pType) != S_OK )
     return false;
-  bool ok = retrieve_type(out, *pType, nullptr, p_id);
+  bool ok = retrieve_type(out, *pType, nullptr, p_ord);
 #ifdef PDEBSYM
   DWORD typsym_id = 0;
   pType->get_symIndexId(&typsym_id);
@@ -306,7 +307,7 @@ bool til_builder_t::retrieve_arguments(
         return S_OK;
       }
       tpinfo_t tpi;
-      bool cvt_succeeded = tb->retrieve_type(&tpi, sym, parent, nullptr);
+      bool cvt_succeeded = tb->retrieve_type(&tpi, sym, parent);
       if ( cvt_succeeded || tpi.is_notype )
       {
         funcarg_t &arg = fi.push_back();
@@ -473,7 +474,7 @@ bool til_builder_t::is_member_func(tinfo_t *class_type, pdb_sym_t &typeSym, pdb_
     return false;
 
   tpinfo_t tpi;
-  if ( !retrieve_type(&tpi, *pParent, nullptr, nullptr) )
+  if ( !retrieve_type(&tpi, *pParent, nullptr) )
     return false; // failed to retrieve the parent's type
 
   class_type->swap(tpi.type);
@@ -516,7 +517,7 @@ int til_builder_t::get_symbol_funcarg_info(
 {
   sym.get_name(&out->name);
   tpinfo_t tpi;
-  get_symbol_type(&tpi, sym, nullptr);
+  get_symbol_type(&tpi, sym);
   out->type = tpi.type;
   if ( locType == LocIsEnregistered )
   {
@@ -614,7 +615,7 @@ bool til_builder_t::verify_union_stem(pdb_udt_type_data_t &udt) const
   // at the moment there is an issue with structure with bit fields only
   if ( udt.size() < 2 )
     return udt_fixed;
-  for ( const pdb_udt_member_t &udm : udt )
+  for ( const pdb_udm_t &udm : udt )
   {
     if ( !udm.is_bitfield() )
       return udt_fixed;
@@ -634,8 +635,8 @@ bool til_builder_t::verify_union_stem(pdb_udt_type_data_t &udt) const
     udm_fixed = false;
     for ( size_t i=0; i < udt.size()-1; ++i )
     {
-      pdb_udt_member_t &udm0 = udt[i];
-      const pdb_udt_member_t &udm1 = udt[i+1];
+      pdb_udm_t &udm0 = udt[i];
+      const pdb_udm_t &udm1 = udt[i+1];
 
       size_t typsz0 = udm0.type.get_size();
       size_t typsz1 = udm1.type.get_size();
@@ -685,7 +686,7 @@ cvt_code_t til_builder_t::verify_union(
       for ( stems_t::iterator s=stems.begin(); s != stems.end(); ++s )
       {
         pdb_udt_type_data_t &sm = *s;
-        pdb_udt_member_t &lastmem = sm.back();
+        pdb_udm_t &lastmem = sm.back();
         uint64 smend = lastmem.end();
         if ( (lastmem.is_bitfield() == q->is_bitfield() || q->bit_offset == 0)
           && smend <= q->begin()
@@ -745,7 +746,7 @@ cvt_code_t til_builder_t::verify_union(
     if ( code != cvt_ok )
       return code;
     s->resize(1);
-    pdb_udt_member_t &sm = s->front();
+    pdb_udm_t &sm = s->front();
     sm.offset = 0;
     sm.size = uint64(total_size) * 8;
     sm.name.sprnt("__s%u", uint(s-stems.begin()));
@@ -784,7 +785,7 @@ cvt_code_t til_builder_t::create_union(
   // calculate the total size
   for ( int i=0; i < unimems.size(); i++ )
   {
-    pdb_udt_member_t &udm = unimems[i];
+    pdb_udm_t &udm = unimems[i];
     size_t nbytes = (udm.end() + 7) / 8;
     if ( nbytes > unimems.total_size )
       unimems.total_size = nbytes;
@@ -831,27 +832,26 @@ inline void ida_vft_name_from_ms(qstring *ivftnm, const qstring &msvftnm)
 }
 
 //----------------------------------------------------------------------
-bool til_builder_t::get_vft_name(qstring *vftn, uint32 *ord, const char *ns, uint32_t offset)
+bool til_builder_t::get_vft_name(qstring *vftn, uint32 *p_ord, const char *ns, uint32_t offset)
 {
   bool vft_creating = false;
   qstring new_vft_name;
   // check for MS vftable
   ms_vft_name(&new_vft_name, ns);
-  uint32 id = get_type_ordinal(ti, new_vft_name.c_str());
-  if ( id == 0 )
+  uint32 ord = get_type_ordinal(ti, new_vft_name.c_str());
+  if ( ord == 0 )
   {
     // maybe creating?
     vft_creating = creating.find(new_vft_name.c_str()) != creating.end();
     if ( !vft_creating )
     {
       ida_vft_name(&new_vft_name, ns, offset);
-      if ( ord != nullptr )
-        id = get_type_ordinal(ti, new_vft_name.c_str());
+      ord = get_type_ordinal(ti, new_vft_name.c_str());
     }
   }
   vftn->swap(new_vft_name);
-  if ( ord != nullptr )
-    *ord = id;
+  if ( p_ord != nullptr )
+    *p_ord = ord;
   return vft_creating;
 }
 
@@ -864,7 +864,7 @@ void pdb_udt_type_data_t::convert_to_tinfo_udt(udt_type_data_t *out)
   out->reserve(size());
   for ( size_t i = 0; i < size(); i++ )
   {
-    udt_member_t &udm = at(i);
+    udm_t &udm = at(i);
 #ifdef PDEB
     out->push_back() = udm;
 #else
@@ -875,12 +875,12 @@ void pdb_udt_type_data_t::convert_to_tinfo_udt(udt_type_data_t *out)
 
 //----------------------------------------------------------------------
 // insert si into the destination type
-inline void merge_vft_udm(int *j, udt_type_data_t *dst_udt, const udt_member_t &si, bool replace)
+inline void merge_vft_udm(int *j, udt_type_data_t *dst_udt, const udm_t &si, bool replace)
 {
   bool insert_src = true;
   for ( ; *j < dst_udt->size(); (*j)++ )
   {
-    udt_member_t &dj = (*dst_udt)[*j];
+    udm_t &dj = (*dst_udt)[*j];
     if ( dj.offset + dj.size <= si.offset )
       continue;
     if ( dj.offset >= si.offset + si.size )
@@ -937,7 +937,7 @@ static void add_vftable_member(
   ptr_member.create_ptr(member);    // the field is a pointer to function
   asize_t size = ptr_member.get_size();
 
-  udt_member_t udm;
+  udm_t udm;
   udm.offset = uint64(vfptr_offset) * 8;
   udm.size = uint64(size) * 8;
   udm.type = ptr_member;
@@ -977,7 +977,7 @@ cvt_code_t til_builder_t::make_vtable_struct(tinfo_t *out, pdb_sym_t &_sym)
       bool is_intro_virtual = get_vfptr_offset(&vfptr_offset, sym);
 
       tpinfo_t tpi;
-      if ( is_intro_virtual && tb->retrieve_type(&tpi, sym, parent, nullptr) )
+      if ( is_intro_virtual && tb->retrieve_type(&tpi, sym, parent) )
       {
         ddeb(("PDEB:   make_vtable_struct add '%s' vptr offset %u\n", tpi.type.dstr(), vfptr_offset));
         add_vftable_member(&vftinfo->udt, tpi.type, name.c_str(), vfptr_offset);
@@ -1061,7 +1061,7 @@ static bool is_forbidden_name(const char *name)
 //   [...]
 void til_builder_t::fix_thisarg_type(const qstring &udt_name)
 {
-  uint32 udt_vft_ord(0);
+  uint32 udt_vft_ord = 0;
   qstring udt_vft_name;
   get_vft_name(&udt_vft_name, &udt_vft_ord, udt_name.c_str());
 
@@ -1166,7 +1166,7 @@ cvt_code_t til_builder_t::convert_udt(
       // assert: intro virtual or data member
 
       tpinfo_t tpi;
-      if ( !tb->retrieve_type(&tpi, sym, parent, nullptr) )
+      if ( !tb->retrieve_type(&tpi, sym, parent) )
         return S_OK;
 
       if ( is_intro_virtual )
@@ -1182,7 +1182,7 @@ cvt_code_t til_builder_t::convert_udt(
       ddeb(("PDEB:   convert_udt adding member '%s' of type '%s'\n", name.c_str(), tpi.type.dstr()));
       asize_t memsize = tb->get_symbol_type_length(sym);
 
-      pdb_udt_member_t &udm = udt.push_back();
+      pdb_udm_t &udm = udt.push_back();
 
       DWORD tag = SymTagNull;
       sym.get_symTag(&tag);
@@ -1295,7 +1295,7 @@ cvt_code_t til_builder_t::convert_udt(
 
   bool is_vtbl_udt = is_ms_vft_name(udt_name);
   qstring udt_vft_name;
-  uint32 udt_vft_ord(0);
+  uint32 udt_vft_ord = 0;
   bool vft_creating = false;
   if ( !is_vtbl_udt )
     vft_creating = get_vft_name(&udt_vft_name, &udt_vft_ord, udt_name.c_str());
@@ -1415,7 +1415,7 @@ static void fill_vft_empty_splots(udt_type_data_t *udt)
     return;
   uint32 nbytes = offset / 8;
 
-  udt_member_t gap;
+  udm_t gap;
   gap.type.create_array(tinfo_t(BTF_BYTE), nbytes);
   gap.offset = 0;
   gap.size = offset;
@@ -1509,7 +1509,7 @@ void til_builder_t::create_vftables()
 }
 
 //----------------------------------------------------------------------
-static bool set_array_type(pdb_udt_member_t *udm, int nbytes)
+static bool set_array_type(pdb_udm_t *udm, int nbytes)
 {
   bool ok = udm->type.create_array(tinfo_t(BT_UNK_BYTE), nbytes);
   if ( ok )
@@ -1520,7 +1520,7 @@ static bool set_array_type(pdb_udt_member_t *udm, int nbytes)
 //----------------------------------------------------------------------
 // the real UDT should have non-zero size,
 // detect a forward reference to a UDT without a real definition
-inline bool is_fwdref_baseclass(pdb_udt_member_t &udm)
+inline bool is_fwdref_baseclass(pdb_udm_t &udm)
 {
   return udm.is_baseclass() && udm.size == 0;
 }
@@ -1543,7 +1543,7 @@ cvt_code_t til_builder_t::fix_bit_union(pdb_udt_type_data_t *udt) const
   if ( udt->empty() )
     return cvt_ok;
   // interested in bitfield union only
-  for ( const pdb_udt_member_t &um : *udt )
+  for ( const pdb_udm_t &um : *udt )
   {
     if ( !um.is_bitfield() )
       return cvt_ok;
@@ -1556,7 +1556,7 @@ cvt_code_t til_builder_t::fix_bit_union(pdb_udt_type_data_t *udt) const
   union_sz = qmax(udt->total_size, union_sz);
   bool is_unsigned = udt->begin()->type.is_unsigned();
   // fill gap
-  pdb_udt_member_t gap;
+  pdb_udm_t gap;
   gap.bit_offset = 0;
   gap.offset = 0;
   gap.size = udt->begin()->offset;
@@ -1565,7 +1565,7 @@ cvt_code_t til_builder_t::fix_bit_union(pdb_udt_type_data_t *udt) const
   udt->insert(udt->begin(), gap);
   // fix member type
   udt->total_size = union_sz;
-  for ( pdb_udt_member_t &um : *udt )
+  for ( pdb_udm_t &um : *udt )
   {
     um.type.create_bitfield(union_sz, um.size, is_unsigned);
     um.bit_offset = um.offset;
@@ -1576,8 +1576,12 @@ cvt_code_t til_builder_t::fix_bit_union(pdb_udt_type_data_t *udt) const
 //----------------------------------------------------------------------
 cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int udtKind, const char *udt_name) const
 {
-  ddeb(("PDEB: til_builder_t::create_udt ENTRY\n"));
+#ifdef PDEB
+  static size_t entry_counter = 0;
+  ++entry_counter;
+  _ddeb("PDEB: til_builder_t::create_udt ENTRY %" FMT_Z "\n", entry_counter);
   dump_pdb_udt(*udt, udt_name);
+#endif
   cvt_code_t code;
   if ( udtKind == UdtUnion )
   {
@@ -1600,7 +1604,7 @@ cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int
   //   - invalid arrays happen (pc_pdb_wow.pe)
   for ( int i=0; i < udt->size(); i++ )
   {
-    pdb_udt_member_t &udm = udt->at(i);
+    pdb_udm_t &udm = udt->at(i);
     if ( udm.is_bitfield() )
       continue;
     int gts_code = GTS_NESTED | (udm.is_baseclass() ? GTS_BASECLASS : 0);
@@ -1613,6 +1617,7 @@ cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int
       {
         if ( !set_array_type(&udm, udm.size/8) )
           return cvt_failed;
+        udm.clr_baseclass();
       }
       else if ( udm.is_baseclass() || udm.type.is_array() )
       { // nbytes==0
@@ -1623,7 +1628,7 @@ cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int
 
   if ( udt->total_size == 0 && !udt->empty() )
   { // msdia did not provide the udt size. use the end of the last element
-    pdb_udt_member_t &udm = udt->back();
+    pdb_udm_t &udm = udt->back();
     udt->total_size = (udm.end() + 7) / 8;
   }
 
@@ -1633,11 +1638,13 @@ cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int
   uint64 total_bits = uint64(udt->total_size) * 8;
   for ( int i=0; i < udt->size(); i++ )
   {
-    pdb_udt_member_t &udm = udt->at(i);
+    pdb_udm_t &udm = udt->at(i);
     if ( udm.offset < last || udm.end() > total_bits )
     {
       if ( udm.end() > total_bits )
         udm.size = total_bits - udm.offset;
+      if ( udm.offset > last )
+        last = udm.offset;
       int nbytes = (udm.end() + 7 - last) / 8;
       if ( nbytes > 0 )
       { // replace with byte array
@@ -1663,14 +1670,15 @@ cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int
   type_t bt = udt->is_union ? BTF_UNION : BTF_STRUCT;
   udt_type_data_t tinfo_udt;
   udt->convert_to_tinfo_udt(&tinfo_udt);
-  out->create_udt(tinfo_udt, bt);
+  if ( !out->create_udt(tinfo_udt, bt) )
+    return cvt_failed;
   if ( !out->calc_udt_aligns(SUDT_GAPS|SUDT_UNEX) )
   {
+    dump_pdb_udt(*udt, udt_name);
+    deb(IDA_DEBUG_DBGINFO, "PDB: Failed to calculate struct '%s' member alignments\n", udt_name != nullptr ? udt_name : "");
 #if defined(TESTABLE_BUILD) && !defined(__FUZZER__)
     QASSERT(30380, !inf_test_mode() && out->get_size() == BADSIZE);
 #endif
-    dump_pdb_udt(*udt, udt_name);
-    deb(IDA_DEBUG_DBGINFO, "PDB: Failed to calculate struct '%s' member alignments\n", udt_name != nullptr ? udt_name : "");
     ask_for_feedback("Failed to calculate struct member alignments");
   }
   return cvt_ok;
@@ -1787,7 +1795,7 @@ cvt_code_t til_builder_t::really_convert_type(
     case SymTagPointerType:
       {
         tpinfo_t obj;
-        if ( !get_symbol_type(&obj, sym, nullptr) )
+        if ( !get_symbol_type(&obj, sym) )
         {
           code = cvt_failed;
           break;
@@ -1822,7 +1830,7 @@ cvt_code_t til_builder_t::really_convert_type(
     case SymTagArrayType:
       {
         tpinfo_t el;
-        if ( !get_symbol_type(&el, sym, nullptr) )
+        if ( !get_symbol_type(&el, sym) )
         {
 FAILED_ARRAY:
           code = cvt_failed;
@@ -1839,7 +1847,7 @@ FAILED_ARRAY:
     case SymTagFunctionType:
       {
         tpinfo_t itp2;
-        if ( !get_symbol_type(&itp2, sym, nullptr) ) // return type
+        if ( !get_symbol_type(&itp2, sym) ) // return type
         {
           code = cvt_failed;
           break;
@@ -1967,7 +1975,7 @@ FAILED_ARRAY:
           const type_t *idatype;
           HRESULT visit_child(pdb_sym_t &child) override
           {
-            enum_member_t &em = ei.push_back();
+            edm_t &em = ei.push_back();
             child.get_name(&em.name);
             em.value = tb->get_variant_long_value(child);
             if ( em.name.empty()
@@ -1982,10 +1990,7 @@ FAILED_ARRAY:
         };
         name_value_collector_t nvc(this);
         if ( size != 0 && size <= 64 )
-        {
-          int bte_size = log2ceil(size) + 1;
-          nvc.ei.bte |= bte_size & BTE_SIZE_MASK;
-        }
+          ((enum_type_data_t_84&)nvc.ei).set_nbytes(size);
         HRESULT hr = pdb_access->iterate_children(sym, SymTagNull, nvc);
         if ( FAILED(hr) )
         { // symbol already exists or
@@ -2019,7 +2024,7 @@ FAILED_ARRAY:
     case SymTagFunctionArgType:
     case SymTagFunction:
     case SymTagData:
-      if ( !get_symbol_type(out, sym, nullptr) )
+      if ( !get_symbol_type(out, sym) )
         code = cvt_failed;
       else if ( out->type.is_decl_typedef() )
         code = cvt_typedef; // signal that this is a typedef
@@ -2065,26 +2070,26 @@ cvt_code_t til_builder_t::convert_type(
 }
 
 //----------------------------------------------------------------------
-bool til_builder_t::begin_creation(DWORD tag, const qstring &name, uint32 *p_id)
+bool til_builder_t::begin_creation(DWORD tag, const qstring &name, uint32 *p_ord)
 {
   if ( tag != SymTagFunction )
   {
-    uint32 id = *p_id;
+    uint32 ord = *p_ord;
     creating_t::iterator c = creating.find(name);
     if ( c != creating.end() ) // recursive call
     {
-      if ( !c->second )        // allocated?
+      if ( c->second == 0 ) // allocated?
       {
-        if ( id == 0 )
-          id = alloc_type_ordinal(ti); // have to create the type id immediately
-        c->second = id;
-        QASSERT(490, id != 0);
-//        msg("%d %s: prematurely mapped to %d\n", type, name.c_str(), c->second);
+        if ( ord == 0 )
+          ord = alloc_type_ordinal(ti); // have to create the type ord immediately
+        c->second = ord;
+        QASSERT(490, ord != 0);
+        ddeb(("PDEB: '%s' prematurely mapped to %u\n", name.c_str(), ord));
       }
-      *p_id = c->second;
+      *p_ord = c->second;
       return false;
     }
-    creating.insert(std::make_pair(name, id)); // add to the 'creating' list
+    creating.insert(std::make_pair(name, ord)); // add to the 'creating' list
   }
   return true;
 }
@@ -2092,20 +2097,20 @@ bool til_builder_t::begin_creation(DWORD tag, const qstring &name, uint32 *p_id)
 //----------------------------------------------------------------------------
 uint32 til_builder_t::end_creation(const qstring &name)
 {
-  uint32 id = 0;
+  uint32 ord = 0;
   creating_t::iterator c = creating.find(name);
   if ( c != creating.end() )
   {
-    id = c->second;
+    ord = c->second;
     creating.erase(c);
   }
-  if ( id == 0 )
+  if ( ord == 0 )
   {
-    id = alloc_type_ordinal(ti); // have to create the type id immediately
-    QASSERT(491, id != 0);
-//    msg("%d %s: mapped to %d\n", type, name.c_str(), id);
+    ord = alloc_type_ordinal(ti); // have to create the type ord immediately
+    QASSERT(491, ord != 0);
+    ddeb(("PDEB: '%s' prematurely mapped to %u\n", name.c_str(), ord));
   }
-  return id;
+  return ord;
 }
 
 
@@ -2304,10 +2309,10 @@ bool til_builder_t::retrieve_type(
         tpinfo_t *out,
         pdb_sym_t &sym,
         pdb_sym_t *parent,
-        int *p_id)
+        uint32 *p_ord)
 {
-  if ( p_id != nullptr )
-    *p_id = -1;
+  if ( p_ord != nullptr )
+    *p_ord = 0;
 
   // id -> unknown typedef?
   DWORD sym_id = 0;
@@ -2327,18 +2332,18 @@ bool til_builder_t::retrieve_type(
   qstring ns;
   bool is_unnamed = get_symbol_name(sym, ns);
   //msg("ID: %d -> %s\n", sym_id, ns.begin());
-  uint32 id(0);
-  bool id_set = false;
+  uint32 ord = 0;
+  bool ord_set = false;
   if ( tag == SymTagVTable && ns.empty() )
   {
     if ( parent != nullptr )
       get_symbol_name(*parent, ns);
     LONG offset = 0;
     sym.get_offset(&offset);
-    get_vft_name(&ns, &id, ns.c_str(), offset);
+    get_vft_name(&ns, &ord, ns.c_str(), offset);
 
     is_unnamed = false;
-    id_set = true;
+    ord_set = true;
   }
 
   // udt fields and simple types are converted without allocating
@@ -2357,12 +2362,12 @@ bool til_builder_t::retrieve_type(
   bool defined_correctly = false;
   bool defined_wrongly = false;
   type_t tif_mod = 0;
-  if ( !id_set )
-    id = get_type_ordinal(ti, ns.c_str());
-  if ( id != 0 )
+  if ( !ord_set )
+    ord = get_type_ordinal(ti, ns.c_str());
+  if ( ord != 0 )
   {
     tinfo_t tif;
-    tif.create_typedef(ti, id);
+    tif.create_typedef(ti, ord);
     tif_mod = get_sym_modifiers(sym);
     if ( tif.get_realtype() == BT_UNK )
       defined_wrongly = true;
@@ -2371,7 +2376,7 @@ bool til_builder_t::retrieve_type(
   }
   if ( !defined_correctly )
   {
-    if ( begin_creation(tag, ns, &id) )
+    if ( begin_creation(tag, ns, &ord) )
     {
       // now convert the type information, recursive types won't bomb
       tpinfo_t tpi2;
@@ -2387,8 +2392,13 @@ bool til_builder_t::retrieve_type(
           tif.create_typedef(ti, ns.c_str());
           tif.set_modifiers(tpi2.type.get_modifiers());
           tpdefs[sym_id] = tif;   // reference to unknown typedef
+          if ( tpi2.type.present() && tpi2.type.is_decl_typedef() )
+          { // do not put a lot of garbage to types: forward declarations etc
+            if ( !tpi2.type.set_named_type(nullptr, ns.c_str(), NTF_TYPE|NTF_REPLACE) )
+              return false;
+            type_created(BADADDR, 0, ns.c_str(), tpi2.type);
+          }
         }
-RETT2:
         out->type = tpi2.type;
         return true;
       }
@@ -2404,15 +2414,16 @@ RETT2:
         // do not check the error code - we cannot help it
         tpi2.type.set_symbol_type(ti, ns.c_str(), NTF_SYMM);
         type_created(BADADDR, 0, ns.c_str(), tpi2.type);
-        goto RETT2;
+        out->type = tpi2.type;
+        return true;
       }
 
       bool reuse_anon_type = false;
       if ( is_unnamed ) // this type will be referenced, so create a name for it
       {
         build_anon_type_name(&ns, type.begin(), fields.begin());
-        id = get_type_ordinal(ti, ns.c_str());
-        if ( id != 0 ) // this type already exists, just reuse it
+        ord = get_type_ordinal(ti, ns.c_str());
+        if ( ord != 0 ) // this type already exists, just reuse it
         {
           creating.erase(ns);
           reuse_anon_type = true;
@@ -2421,32 +2432,37 @@ RETT2:
       }
       if ( !reuse_anon_type )
       {
-        id = end_creation(ns);
+        ord = end_creation(ns);
         int ntf_flags = NTF_NOBASE|NTF_FIXNAME;
         if ( defined_wrongly )
           ntf_flags |= NTF_REPLACE;
-        if ( set_numbered_type(ti, id, ntf_flags,
-                               ns.empty() ? nullptr : ns.c_str(),
-                               type.begin(),
-                               fields.begin()) != TERR_OK )
+        tinfo_code_t code = set_numbered_type(
+              ti,
+              ord,
+              ntf_flags,
+              ns.empty() ? nullptr : ns.c_str(),
+              type.begin(),
+              fields.begin());
+        if ( code != TERR_OK )
         {
-          return 0;
+          ddeb(("PDEB: set_numbered_type(%u, %s) : %s\n", ord, ns.c_str(), tinfo_errstr(code)));
+          return false;
         }
         tif_mod = tpi2.type.get_modifiers();
       }
       if ( is_unnamed )
-        unnamed_types.insert(id);
-      // msg("%d: %s\n  name: %s\n", id, tpi2.dstr(), ns.c_str());
-      type_created(BADADDR, id, nullptr, tpi2.type);
+        unnamed_types.insert(ord);
+      // msg("%d: %s\n  name: %s\n", ord, tpi2.dstr(), ns.c_str());
+      type_created(BADADDR, ord, nullptr, tpi2.type);
     }
     else
     { // in case of recursive call we need to preserve modifiers
       tif_mod = get_sym_modifiers(sym);
     }
   }
-  if ( p_id != nullptr )
-    *p_id = id;
-  out->type.create_typedef(ti, id);
+  if ( p_ord != nullptr )
+    *p_ord = ord;
+  out->type.create_typedef(ti, ord);
   if ( tif_mod != 0 )
     out->type.set_modifiers(tif_mod);
   return true;
@@ -2592,7 +2608,7 @@ HRESULT til_builder_t::handle_types(pdb_sym_t &global_sym)
     virtual HRESULT do_visit_child(pdb_sym_t &sym) override
     {
       tpinfo_t tpi;
-      if ( tb->retrieve_type(&tpi, sym, parent, nullptr) )
+      if ( tb->retrieve_type(&tpi, sym, parent) )
         counter++;
       return S_OK;
     }

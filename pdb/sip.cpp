@@ -609,7 +609,7 @@ public:
   bool idaapi get_expr_tinfo(tinfo_t *tif) const override
   {
     til_builder_t::tpinfo_t tpi;
-    bool res = pdb_module->type_cache->retrieve_type(&tpi, *sym, nullptr, nullptr);
+    bool res = pdb_module->type_cache->retrieve_type(&tpi, *sym, nullptr);
 
     *tif = tpi.type;
 

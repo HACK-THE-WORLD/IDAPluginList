@@ -1,4 +1,26 @@
 #pragma once
+__if_not_exists(udm_t)
+{
+	typedef udt_member_t udm_t;
+}
+__if_not_exists(edm_t)
+{
+	typedef enum_member_t edm_t;
+}
+struct enum_type_data_t_84 :public enum_type_data_t
+{
+	/// set enum width (nbytes)
+	bool set_nbytes(int nbytes)
+	{
+		if (nbytes < 0 || nbytes > 8 || !is_pow2(nbytes))
+			return false;      // bad width
+		int idb_width = 0;
+		if (nbytes != 0)
+			idb_width = log2ceil(nbytes) + 1;
+		bte = (bte & ~BTE_SIZE_MASK) | idb_width;
+		return true;
+	}
+};
 
 //----------------------------------------------------------------------------
 enum cvt_code_t
@@ -10,14 +32,14 @@ enum cvt_code_t
 
 //----------------------------------------------------------------------------
 // PBD provides the offset of a bitfield inside a bitfield group.
-// We subclass udt_member_t in order to keep that information separate from
+// We subclass udm_t in order to keep that information separate from
 // the 'offset' field.
-struct pdb_udt_member_t : public udt_member_t
+struct pdb_udm_t : public udm_t
 {
   uint32 bit_offset;    ///< member offset in bits from start of bitfield group
 };
-DECLARE_TYPE_AS_MOVABLE(pdb_udt_member_t);
-typedef qvector<pdb_udt_member_t> pdbudtmembervec_t; ///< vector of pdb udt member objects
+DECLARE_TYPE_AS_MOVABLE(pdb_udm_t);
+typedef qvector<pdb_udm_t> pdbudtmembervec_t; ///< vector of pdb udt member objects
 
 //----------------------------------------------------------------------------
 // stripped-down version of udt_type_data_t with only the fields used by pdb.
@@ -95,7 +117,7 @@ public:
   typedef std::map<DWORD, tpinfo_t> typemap_t;
   typedef std::map<DWORD, tinfo_t> tpdefs_t;
   typedef std::set<DWORD> idset_t;
-  typedef std::map<qstring, int> creating_t;
+  typedef std::map<qstring, uint32> creating_t;   // typename : ordinal
   typedef std::set<uint32> unnamed_t;
 
   struct vft_info_t
@@ -112,8 +134,8 @@ public:
   // also remove `anonymous namespace'::
   void remove_anonymous_namespaces(qstring &storage);
 
-  bool get_symbol_type(tpinfo_t *out, pdb_sym_t &sym, int *p_id);
-  bool retrieve_type(tpinfo_t *out, pdb_sym_t &sym, pdb_sym_t *parent, int *p_id);
+  bool get_symbol_type(tpinfo_t *out, pdb_sym_t &sym, uint32 *p_ord=nullptr);
+  bool retrieve_type(tpinfo_t *out, pdb_sym_t &sym, pdb_sym_t *parent, uint32 *p_ord=nullptr);
   bool retrieve_arguments(
         pdb_sym_t &sym,
         func_type_data_t &fi,

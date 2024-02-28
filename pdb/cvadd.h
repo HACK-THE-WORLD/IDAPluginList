@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2005-2023 Hex-Rays SA <support@hex-rays.com>
+// Copyright (c) 2005-2024 Hex-Rays SA <support@hex-rays.com>
 // ALL RIGHTS RESERVED.
 //
 // Utilities to extend cvconst.h and cvinfo.h
