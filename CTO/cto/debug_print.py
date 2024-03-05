@@ -5,9 +5,9 @@ import os
 import ida_kernwin
 
 class debug(object):
-    def __init__(self, frames=2, lines=20000, outfile=True):
+    def __init__(self, frames=2, lines=20000, outfile=True, file_handle=None):
         self.outfile = outfile
-        self.f = None
+        self.f = file_handle
         self.output_lines = 0
         self.max_output_lines = lines
         self.trace_back_frames = frames

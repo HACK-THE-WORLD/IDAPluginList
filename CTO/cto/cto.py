@@ -1824,7 +1824,7 @@ class CallTreeOverviewer(cto_base.cto_base, ida_graph.GraphViewer):
                                 tmp_direction = 'up'
                                 if opposite_direction == 'children':
                                     tmp_direction = 'down'
-                                for p in self.find_path(self.nodes[ea], end_nid=-1, direction=tmp_direction, nodes_limitation=set([self.nodes[x] for x in self.related_nodes[ea]])):
+                                for p in self.find_path(self.nodes[ea], end_nid=-1, direction=tmp_direction, nodes_limitation=set([self.nodes[x] for x in self.related_nodes[ea] if ea in self.related_nodes and x in self.nodes])):
                                     if self.config.debug: self.dbg_print("path (id):", [x for x in p])
                                     if self.config.debug:
                                         tmp_ar = []

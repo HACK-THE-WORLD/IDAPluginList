@@ -1495,7 +1495,7 @@ def trace_func_calls(func_relations, ea, func_ea=ida_idaapi.BADADDR, target_ea=i
     if max_recursive > 0 and nrecursive >= max_recursive and target_ea == ida_idaapi.BADADDR and force_trace == False:
         if debug: dbg_print("recursive limit!!! %d" % nrecursive)
         #if (func_ea in func_relations and len(func_relations[func_ea][direction]) > 0) or (len(drefs) > 0 and next_drefs_flag):
-        if (func_ea in func_relations and len([func_relations[func_ea][direction][x] for x in func_relations[func_ea][direction] if func_relations[func_ea][direction][x][1] not in [FT_STO, FT_VAR, FT_STR]]) > 0) or (len(drefs) > 0 and next_drefs_flag):
+        if (func_ea in func_relations and direction in func_relations[func_ea] and len([func_relations[func_ea][direction][x] for x in func_relations[func_ea][direction] if func_relations[func_ea][direction][x][1] not in [FT_STO, FT_VAR, FT_STR]]) > 0) or (len(drefs) > 0 and next_drefs_flag):
             if debug: dbg_print("tracing nodes finished with an exceeded node", hex(func_ea), [(hex(x[0]), hex(x[1]), hex(x[2])) for x in drefs])
             exceeded_func_type = FT_UNK
             if direction == "parents" and (func_ea in func_relations and len(func_relations[func_ea][direction]) == 0) and not next_drefs_code_flag:
