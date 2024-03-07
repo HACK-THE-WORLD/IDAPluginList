@@ -17,7 +17,7 @@ jobs:
 
       - name: AutoClone
         run: |
-          pl=(https://github.com/Accenture/VulFi https://github.com/REhints/HexRaysCodeXplorer https://github.com/a1ext/auto_re https://github.com/polymorf/findcrypt-yara https://github.com/gaasedelen/patching https://github.com/keystone-engine/keypatch https://github.com/herosi/CTO https://github.com/aliyunav/Finger https://github.com/L4ys/LazyIDA https://github.com/P4nda0s/IDABeautify https://github.com/SentineLabs/AlphaGolang https://github.com/sibears/IDAGolangHelper https://github.com/sonyps5201314/pdb https://github.com/JusticeRage/Gepetto https://github.com/harlamism/IdaClu https://github.com/thalium/symless https://github.com/airbus-cert/Yagi https://github.com/cseagle/blc)
+          pl=(https://github.com/Accenture/VulFi https://github.com/REhints/HexRaysCodeXplorer https://github.com/a1ext/auto_re https://github.com/polymorf/findcrypt-yara https://github.com/gaasedelen/patching https://github.com/keystone-engine/keypatch https://github.com/herosi/CTO https://github.com/aliyunav/Finger https://github.com/L4ys/LazyIDA https://github.com/P4nda0s/IDABeautify https://github.com/SentineLabs/AlphaGolang https://github.com/sibears/IDAGolangHelper https://github.com/sonyps5201314/pdb https://github.com/JusticeRage/Gepetto https://github.com/harlamism/IdaClu https://github.com/thalium/symless https://github.com/airbus-cert/Yagi https://github.com/cseagle/blc https://github.com/jitcor/export_func_code)
           # 设置Git
           git config --local user.name "AnonymousUser"
           git config --local user.email "you@example.com"
