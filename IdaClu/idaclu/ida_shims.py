@@ -40,6 +40,12 @@ try:
 except ImportError:
     ida_funcs = None
 
+try:
+    import ida_search
+except ImportError:
+    ida_search = None
+    
+
 
 def _get_fn_by_version(lib, curr_fn, archive_fn, archive_lib=None):
     '''
@@ -231,6 +237,10 @@ def is_off0(flag):
 
 def is_loaded(ea):
     fn = _get_fn_by_version(ida_bytes, 'is_loaded', 'isLoaded', idc)
+    return fn(ea)
+
+def has_xref(ea):
+    fn = _get_fn_by_version(ida_bytes, 'has_xref', 'hasRef', idaapi)
     return fn(ea)
 
 def get_flags(ea):
@@ -430,6 +440,12 @@ def next_head(ea, maxea=4294967295):
     fn = _get_fn_by_version(idc, 'next_head', 'NextHead')
     return fn(ea, maxea)
 
+
+def find_text(ea, y, x, searchstr, flag):
+    fn = _get_fn_by_version(ida_search, 'find_text', 'FindText', idc)
+    if idaapi.IDA_SDK_VERSION >= 700:
+        return fn(ea, y, x, searchstr, flag)
+    return fn(ea, flag, y, x, searchstr)
 
 def get_screen_ea():
     '''

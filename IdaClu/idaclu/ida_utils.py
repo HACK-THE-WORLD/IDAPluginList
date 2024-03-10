@@ -55,8 +55,15 @@ def change_dir(dir_name, is_abs=True):
 # 3. '%' is purely internal prefix representation, '_' - human representation;
 # 4. '%' are the prefixes added automatically, '_' - manually
 
+def is_pfx_valid(pfx):
+    a_facts = ['@', '$', '?', '-', '+']
+    is_complex = any(a in pfx for a in a_facts)
+    is_numeric = re.match('^[0-9]+', pfx)
+    is_blanked = pfx == ''
+    return not (is_complex or is_numeric or is_blanked)
+
 def get_func_prefs(func_name, is_dummy=True):
-    if ((func_name.startswith('?') and '@' in func_name) or 
+    if ((func_name.startswith('?') and '@' in func_name) or
         func_name.startswith('_')):
         return []
     pfx_dummy = 'sub_'
@@ -64,22 +71,18 @@ def get_func_prefs(func_name, is_dummy=True):
     pfx = ''
 
     idx = 0
+    func_name = func_name.rstrip('_%:')
     while idx < len(func_name):
         char = func_name[idx]
-        if char == '%':
-            prefs.append(pfx)
-            pfx = ''
-
-        elif char == "_":
-            pfx_len = 1
-            while func_name[idx+pfx_len] == '_':
+        if char in ['%', ':', '_']:
+            pfx_len = 1 
+            while (idx+pfx_len) < len(func_name) and func_name[idx+pfx_len] in ['_', ':']:
                 pfx_len += 1
 
             if idx != 0:
                 # uncomment, if underscore tail in pfx is needed
                 # pfx += func_name[idx:idx+pfx_len]
-                if (not any(a in pfx for a in ['@', '$', '?', '-', '+']) and 
-                    not re.match('^[0-9]+', pfx) and pfx != ''):
+                if is_pfx_valid(pfx):
                     prefs.append(pfx)
                 pfx = ''
                 
@@ -494,3 +497,52 @@ def get_data_refs_to(addr):
 
 def get_refs_to(addr):
     return iter(get_code_refs_to(addr).union(get_data_refs_to(addr)))
+
+def is_arch64():
+    return bool(idaapi.getseg(ida_shims.get_first_seg()).bitness == 2)
+
+def get_ptr_type():
+    return [FF_DWORD, FF_QWORD][is_arch64()]
+
+def get_ref_off():
+    return [REF_OFF32, REF_OFF64][is_arch64()]
+
+def get_ptr_size():
+    return [4, 8][is_arch64()]
+
+def get_ptr(addr):
+    return [idaapi.get_32bit, idaapi.get_64bit][is_arch64()](addr)
+
+def is_GCC_auto():
+    inf = idaapi.get_inf_structure()
+    if idaapi.get_compiler_name(inf.cc.id) == 'GNU C++':
+        return True
+    return False
+
+def is_GCC_manual():
+    gcc_rtti_artifacts = [
+        "St9type_info",
+        "N10__cxxabiv117__class_type_infoE",
+        "N10__cxxabiv120__si_class_type_infoE",
+        "N10__cxxabiv121__vmi_class_type_infoE"
+    ]
+
+    flag = idaapi.SEARCH_CASE|idaapi.SEARCH_DOWN
+    for art in gcc_rtti_artifacts:
+        gcc_info = ida_shims.find_text(0x0, 0, 0, art, flag)
+        if gcc_info != idaapi.BADADDR:
+            return True
+    return False
+
+def is_vtable(addr):
+    if addr and has_xref(addr):
+        func_ea = get_ptr(addr)
+        if func_ea and idaapi.getseg(func_ea):
+            if ida_shims.get_segm_attr(func_ea, idc.SEGATTR_TYPE) == idc.SEG_CODE:
+                func_desc = idaapi.get_func(func_ea)
+                if func_desc and func_ea == ida_shims.start_ea(func_desc):
+                    return True
+    return False
+
+def has_xref(addr):
+    return ida_shims.has_xref(ida_shims.get_full_flags(addr))

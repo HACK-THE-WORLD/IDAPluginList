@@ -180,7 +180,7 @@ __AUTHOR__ = "Sergejs 'HRLM' Harlamovs"
 
 PLUGIN_NAME = "IdaClu"
 PLUGIN_HOTKEY = 'Ctrl+Alt+O'
-PLUGIN_VERSION = '1.0'
+PLUGIN_VERSION = '1.1'
 PLUGIN_TITLE = '{0} v{1}'.format(PLUGIN_NAME, PLUGIN_VERSION)
 PLUGIN_URL = "https://github.com/harlamism/IdaClu"
 PLUGIN_INFO = 'For usage see: <a href="{0}">{0}</a>'.format(PLUGIN_URL)

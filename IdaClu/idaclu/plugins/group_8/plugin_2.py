@@ -36,7 +36,6 @@ def get_data(func_gen=None, env_desc=None, plug_params=None):
         func_score = helpers.calc_cyclomatic_complexity(func_addr)
         
         xref_key = "score: {}".format(func_score)
-        print(xref_key)
         
         report['data'][xref_key].append(func_addr)
         report['stat'][xref_key] += 1

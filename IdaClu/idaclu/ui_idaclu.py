@@ -314,7 +314,7 @@ class Ui_PluginDialog(object):
     # setupUi
 
     def retranslateUi(self, PluginDialog):
-        PluginDialog.setWindowTitle(i18n("IdaClu v1.0"))
+        PluginDialog.setWindowTitle(i18n("IdaClu v1.1"))
         self.ScriptsHeader.setText(i18n("TOOLSET"))
         self.FiltersHeader.setText(i18n("FILTERS"))
     # retranslateUi
