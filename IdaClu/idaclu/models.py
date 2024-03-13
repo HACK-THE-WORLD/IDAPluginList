@@ -1,9 +1,12 @@
+from re import split
+
 from idaclu.qt_shims import (
     QAbstractItemModel,
     QBrush,
     QColor,
     QModelIndex,
-    Qt
+    Qt,
+    QtCore
 )
 
 
@@ -24,7 +27,9 @@ class ResultNode(object):
         if column == 0:
             return str(self._data[column]).replace('%', '_')
         elif column >= 1 and column < len(self._data):
-            return self._data[column]
+            if self._data[column] != None:
+                return self._data[column]
+            return ""
 
     def columnCount(self):
         return self._columncount
@@ -163,3 +168,17 @@ class ResultModel(QAbstractItemModel):
                         self.dataChanged.emit(index.sibling(index.row(), col), [Qt.EditRole])
             return True
         return False
+
+    def sort(self, column, order, is_child_sort=-1):
+
+        def natural_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower() for text in split('([0-9]+)', s)]
+
+        if is_child_sort != -1:
+            self.beginResetModel()
+            if is_child_sort:
+                for i, child in enumerate(self._root._children):
+                    self._root._children[i]._children.sort(key=lambda x: x.data(column), reverse=(order == QtCore.Qt.DescendingOrder))
+            else:
+                self._root._children.sort(key=lambda x: natural_sort_key(x.data(column)), reverse=(order == QtCore.Qt.DescendingOrder))
+            self.endResetModel()

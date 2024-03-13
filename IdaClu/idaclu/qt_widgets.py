@@ -2,6 +2,7 @@
 from collections import OrderedDict
 
 from idaclu.qt_shims import (
+    QAbstractItemView,
     QComboBox,
     QColor,
     QCursor,
@@ -21,6 +22,7 @@ from idaclu.qt_shims import (
     QStandardItem,
     QStyledItemDelegate,
     Qt,
+    QTreeView,
     QThread,
     QVBoxLayout,
     QWidget,
@@ -623,3 +625,31 @@ class FrameLayout(QWidget):
             else:  # 'pyside'
                 painter.drawPolygon(self._arrow)
             painter.end()
+
+
+class CluTreeView(QTreeView):
+    def __init__(self, parent=None):
+        QTreeView.__init__(self, parent=parent)
+        self.setSortingEnabled(True)
+        self.setAlternatingRowColors(True)
+        self.setObjectName(u"rvTable")
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.setAlternatingRowColors(True)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+        self.header().sectionClicked.connect(self.sortByColumn)
+        self.expanded.connect(self.save_expanded_state)
+        self.collapsed.connect(self.save_expanded_state)
+        self.expanded_state = {}
+
+    def sortByColumn(self, logicalIndex):
+        currentOrder = self.header().sortIndicatorOrder()
+        isChildSort = bool(self.expanded_state) and any(value == True for value in self.expanded_state.values())
+        self.model().sort(logicalIndex, currentOrder, int(isChildSort))
+        for index, state in self.expanded_state.items():
+            self.setExpanded(index, state)
+
+    def save_expanded_state(self, index):
+        self.expanded_state[index] = self.isExpanded(index)
+

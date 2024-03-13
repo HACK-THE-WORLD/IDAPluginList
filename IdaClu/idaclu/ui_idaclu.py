@@ -38,13 +38,13 @@ from idaclu.qt_shims import (
     QStyledItemDelegate,
     Qt,
     QThread,
-    QTreeView,
     QVBoxLayout,
     QWidget
 )
 from idaclu.qt_utils import i18n
 
 from idaclu.qt_widgets import (
+    CluTreeView,
     FilterInputGroup,
     LabelTool,
     PaletteTool,
@@ -243,7 +243,7 @@ class Ui_PluginDialog(object):
         self.hlResultsView = QHBoxLayout(self.wResultsView)
         self.hlResultsView.setObjectName(u"hlResultsView")
         self.hlResultsView.setContentsMargins(0, 0, 0, 0)
-        self.rvTable = QTreeView(self.wResultsView)
+        self.rvTable = CluTreeView(self.wResultsView)
         self.rvTable.setObjectName(u"rvTable")
         self.rvTable.setContextMenuPolicy(Qt.CustomContextMenu)
         self.rvTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
