@@ -8,9 +8,10 @@ import idautils
 #
 from idaclu import ida_shims
 from idaclu import ida_utils
+from idaclu.qt_utils import i18n
 
 
-SCRIPT_NAME = 'Windows API Semantics'
+SCRIPT_NAME = i18n('Windows API Semantics')
 SCRIPT_TYPE = 'custom'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = []

@@ -6,9 +6,10 @@ import idautils
 import idc
 #
 from idaclu import ida_shims
+from idaclu.qt_utils import i18n
 
 
-SCRIPT_NAME = 'String Refs'
+SCRIPT_NAME = i18n('String Refs')
 SCRIPT_TYPE = 'custom'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = []

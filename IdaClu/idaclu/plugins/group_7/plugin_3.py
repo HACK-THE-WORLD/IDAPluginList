@@ -8,9 +8,10 @@ import idaapi
 import idautils
 #
 from idaclu import ida_shims
+from idaclu.qt_utils import i18n
 
 
-SCRIPT_NAME = 'Distinct Colors'
+SCRIPT_NAME = i18n('Distinct Colors')
 SCRIPT_TYPE = 'func'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = []

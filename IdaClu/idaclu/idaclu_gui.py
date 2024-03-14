@@ -30,6 +30,7 @@ from idaclu.qt_shims import (
 from idaclu import ida_utils
 from idaclu import plg_utils
 from idaclu.ui_idaclu import Ui_PluginDialog
+from idaclu.qt_utils import i18n
 from idaclu.qt_widgets import FrameLayout
 from idaclu.models import ResultModel, ResultNode
 from idaclu.assets import resource
@@ -472,11 +473,10 @@ class IdaCluDialog(QWidget):
         ix = self.ui.rvTable.indexAt(point)
         if ix.column() == 0:
             menu = QMenu()
-            menu.addAction(QIcon(':/idaclu/icon_64.png'), "Rename")
+            renameAction = menu.addAction(QIcon(':/idaclu/icon_64.png'), i18n("Rename"))
             action = menu.exec_(self.ui.rvTable.mapToGlobal(point))
-            if action:
-                if action.text() == "Rename":
-                    self.ui.rvTable.edit(ix)
+            if action == renameAction:
+                self.ui.rvTable.edit(ix)
 
     def getFuncAddrCol(self):
         if self.env_desc.feat_folders:

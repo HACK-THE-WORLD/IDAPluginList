@@ -7,9 +7,10 @@ import idautils
 import idc
 #
 from idaclu import ida_shims
+from idaclu.qt_utils import i18n
 
 
-SCRIPT_NAME = 'Common Constants'
+SCRIPT_NAME = i18n('Common Constants')
 SCRIPT_TYPE = 'func'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = []

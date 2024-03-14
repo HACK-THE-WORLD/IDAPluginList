@@ -486,6 +486,14 @@ def get_QThread():
         import PyQt5.QtCore as QtCore
         return QtCore.QThread
 
+def get_QTranslator():
+    if is_ida and idaapi.IDA_SDK_VERSION <= 680:
+        import PySide.QtCore as QtCore
+        return QtCore.QTranslator
+    else:
+        import PyQt5.QtCore as QtCore
+        return QtCore.QTranslator
+
 def get_QTreeView():
     if is_ida and idaapi.IDA_SDK_VERSION <= 680:
         import PySide.QtGui as QtGui
@@ -594,6 +602,7 @@ QTextBrowser = get_QTextBrowser()
 QTextEdit = get_QTextEdit()
 QtGui = get_QtGui()
 QThread = get_QThread()
+QTranslator = get_QTranslator()
 QTreeView = get_QTreeView()
 QTreeWidget = get_QTreeWidget()
 QTreeWidgetItem = get_QTreeWidgetItem()

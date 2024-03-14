@@ -43,8 +43,8 @@ class LabelTool(QWidget):
         self.env_desc = env_desc
         self.label_mode = LabelTool.PREFIX
         self.data = [
-            {'caption': 'prefix', 'pholder': 'Insert name'},
-            {'caption': 'folder', 'pholder': 'Insert name'}
+            {'caption': i18n('PREFIX'), 'pholder': i18n('Insert name')},
+            {'caption': i18n('FOLDER'), 'pholder': i18n('Insert name')}
         ]
         font = QFont()
         font.setBold(True)
@@ -101,7 +101,7 @@ class LabelTool(QWidget):
         edit = QLineEdit(parent)
         edit.setMinimumSize(QSize(16777215, 30))
         edit.setMaximumSize(QSize(16777215, 30))
-        edit.setPlaceholderText("Insert prefix")
+        edit.setPlaceholderText(i18n("Insert prefix"))
         self._edit = edit
 
         layout.addWidget(self._label)

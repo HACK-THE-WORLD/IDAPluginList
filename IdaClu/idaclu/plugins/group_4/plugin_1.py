@@ -2,14 +2,17 @@ import bisect
 import collections
 import json
 import os
-
+#
 import idautils
 import idaapi
+#
 from idaclu import ida_shims
+from idaclu.qt_utils import i18n
+#
 import drcov
 
 
-SCRIPT_NAME = 'Covered Functions'
+SCRIPT_NAME = i18n('Covered Functions')
 SCRIPT_TYPE = 'func'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = [('filePath', 'file_path', 'input the file path')]

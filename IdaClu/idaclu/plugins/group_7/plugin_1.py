@@ -7,9 +7,10 @@ import idautils
 import ida_dirtree
 #
 from idaclu import ida_shims
+from idaclu.qt_utils import i18n
 
 
-SCRIPT_NAME = 'Distinct Folders'
+SCRIPT_NAME = i18n('Distinct Folders')
 SCRIPT_TYPE = 'func'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = []

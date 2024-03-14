@@ -9,9 +9,10 @@ import idaapi
 import idautils
 #
 from idaclu import ida_shims
+from idaclu.qt_utils import i18n
 
 
-SCRIPT_NAME = 'Rule Match'
+SCRIPT_NAME = i18n('Rule Match')
 SCRIPT_TYPE = 'func'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = [('filePath', 'file_path', 'path to folder with .yar files')]

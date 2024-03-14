@@ -5,9 +5,10 @@ import idaapi
 import idautils
 #
 from idaclu import ida_shims
+from idaclu.qt_utils import i18n
 
 
-SCRIPT_NAME = 'Global Variable Analysis'
+SCRIPT_NAME = i18n('Global Variable Analysis')
 SCRIPT_TYPE = 'custom'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = []

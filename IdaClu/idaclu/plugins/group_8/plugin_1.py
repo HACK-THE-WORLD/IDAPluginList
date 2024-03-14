@@ -6,11 +6,12 @@ import idaapi
 import idautils
 #
 from idaclu import ida_shims
+from idaclu.qt_utils import i18n
 #
 import helpers
 
 
-SCRIPT_NAME = 'Flattened Functions'
+SCRIPT_NAME = i18n('Flattened Functions')
 SCRIPT_TYPE = 'func'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = []

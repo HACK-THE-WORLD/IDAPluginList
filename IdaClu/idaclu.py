@@ -38,8 +38,10 @@ except ImportError:
         pass
 
 from idaclu.qt_shims import (
+    QCoreApplication,
     QIcon,
-    QMessageBox
+    QMessageBox,
+    QTranslator
 )
 from idaclu import idaclu_gui
 from idaclu.assets import resource
@@ -194,6 +196,12 @@ class IdaCluForm(PluginForm):
 
     def OnCreate(self, form):
         self.env_desc.dump(True)
+
+        app = QCoreApplication
+        translator = QTranslator()
+        translator.load('idaclu/assets/i18n/tr_cn', os.path.dirname(__file__))
+        app.installTranslator(translator)
+
         if self.env_desc.lib_qt == 'pyqt5':
             self.parent = self.FormToPyQtWidget(form)
         elif self.env_desc.lib_qt == 'pyside':

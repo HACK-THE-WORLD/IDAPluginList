@@ -5,9 +5,10 @@ import idaapi
 import idautils
 #
 from idaclu import ida_shims
+from idaclu.qt_utils import i18n
 
 
-SCRIPT_NAME = 'Control Flow Analysis'
+SCRIPT_NAME = i18n('Control Flow Analysis')
 SCRIPT_TYPE = 'func'
 SCRIPT_VIEW = 'tree'
 SCRIPT_ARGS = []

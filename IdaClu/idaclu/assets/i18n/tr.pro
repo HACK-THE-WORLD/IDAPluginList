@@ -1,0 +1,42 @@
+SOURCES += ../../qt_widgets.py \
+../../ui_idaclu.py \
+../../plugins/group_1/__init__.py \
+../../plugins/group_1/plugin_1.py \
+../../plugins/group_1/plugin_2.py \
+../../plugins/group_1/plugin_3.py \
+../../plugins/group_2/__init__.py \
+../../plugins/group_2/plugin_1.py \
+../../plugins/group_2/plugin_2.py \
+../../plugins/group_2/plugin_3.py \
+../../plugins/group_2/plugin_4.py \
+../../plugins/group_2/plugin_5.py \
+../../plugins/group_2/plugin_6.py \
+../../plugins/group_2/plugin_7.py \
+../../plugins/group_3/__init__.py \
+../../plugins/group_3/plugin_1.py \
+../../plugins/group_3/plugin_2.py \
+../../plugins/group_4/__init__.py \
+../../plugins/group_4/plugin_1.py \
+../../plugins/group_5/__init__.py \
+../../plugins/group_5/plugin_1.py \
+../../plugins/group_5/plugin_2.py \
+../../plugins/group_6/__init__.py \
+../../plugins/group_6/plugin_1.py \
+../../plugins/group_6/plugin_2.py \
+../../plugins/group_6/plugin_3.py \
+../../plugins/group_7/__init__.py \
+../../plugins/group_7/plugin_1.py \
+../../plugins/group_7/plugin_2.py \
+../../plugins/group_7/plugin_3.py \
+../../plugins/group_7/plugin_4.py \
+../../plugins/group_8/__init__.py \
+../../plugins/group_8/plugin_1.py \
+../../plugins/group_8/plugin_2.py \
+../../plugins/group_8/plugin_3.py \
+../../plugins/group_8/plugin_4.py \
+../../plugins/group_8/plugin_5.py \
+../../plugins/group_8/plugin_6.py \
+../../plugins/group_8/plugin_7.py \
+../../plugins/group_9/__init__.py \
+../../plugins/group_9/plugin_1.py
+TRANSLATIONS = tr_zh.ts
