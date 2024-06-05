@@ -67,7 +67,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_USRDLL;__NT__;__IDP__;MAXSTR=1024;__X64__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -87,7 +87,7 @@
     <Link>
       <AdditionalOptions>
       </AdditionalOptions>
-      <AdditionalDependencies>ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ida.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\..\lib\x64_win_vc_32;..\..\lib\x64_win_vc_32_pro;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -114,7 +114,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_USRDLL;__NT__;__IDP__;MAXSTR=1024;__EA64__;__X64__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -134,10 +134,10 @@
     <Link>
       <AdditionalOptions>
       </AdditionalOptions>
-      <AdditionalDependencies>ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ida.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)64$(TargetExt)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\..\lib\x64_win_vc_64;..\..\lib\x64_win_vc_64_pro;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>lib\x64;..\..\lib\x64_win_vc_64;..\..\lib\x64_win_vc_64_pro;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(IntDir)\blc64.pdb</ProgramDatabaseFile>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -160,6 +160,7 @@
     <ClCompile Include="capability.cc" />
     <ClCompile Include="cast.cc" />
     <ClCompile Include="comment.cc" />
+    <ClCompile Include="compression.cc" />
     <ClCompile Include="condexe.cc" />
     <ClCompile Include="context.cc" />
     <ClCompile Include="coreaction.cc" />
@@ -196,6 +197,7 @@
     <ClCompile Include="memstate.cc" />
     <ClCompile Include="merge.cc" />
     <ClCompile Include="modelrules.cc" />
+    <ClCompile Include="multiprecision.cc" />
     <ClCompile Include="op.cc" />
     <ClCompile Include="opbehavior.cc" />
     <ClCompile Include="opcodes.cc" />
@@ -216,6 +218,7 @@
     <ClCompile Include="ruleaction.cc" />
     <ClCompile Include="run.cc" />
     <ClCompile Include="semantics.cc" />
+    <ClCompile Include="slaformat.cc" />
     <ClCompile Include="sleigh.cc" />
     <ClCompile Include="sleighbase.cc" />
     <ClCompile Include="sleigh_arch.cc" />
@@ -321,10 +324,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ast.hh" />
+    <ClInclude Include="compression.hh" />
     <ClInclude Include="marshal.hh" />
     <ClInclude Include="modelrules.hh" />
+    <ClInclude Include="multiprecision.hh" />
+    <ClInclude Include="slaformat.hh" />
     <ClInclude Include="transform.hh" />
     <ClInclude Include="xml_tree.hh" />
+    <ClInclude Include="zconf.h" />
+    <ClInclude Include="zlib.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

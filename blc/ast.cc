@@ -684,7 +684,12 @@ VarDecl::~VarDecl() {
 }
 
 void Funcproto::print() {
-    return_type->do_print();
+    if (return_type) {
+        return_type->do_print();
+    }
+    else {
+        dmsg("Funcproto::print NULL return_type for funcptoto %s\n", name.c_str());
+    }
     for (vector<string>::iterator i = keywords.begin(); i != keywords.end(); i++) {
         append(' ');
         append(*i);

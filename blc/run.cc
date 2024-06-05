@@ -325,14 +325,14 @@ int do_decompile(uint64_t start_ea, uint64_t end_ea, Function **result) {
 
         if (res < 0) {
             ostringstream os;
- //           msg("Break at ");
+            msg("Break at ");
             arch->allacts.getCurrent()->printState(os);
             msg("%s\n", os.str().c_str());
         }
         else {
- //           msg("Decompilation complete");
+//            msg("Decompilation complete\n");
             if (res == 0) {
- //               msg(" (no change)");
+                msg(" (no change)\n");
             }
 
 //            msg("do_pcode start\n");
@@ -346,22 +346,31 @@ int do_decompile(uint64_t start_ea, uint64_t end_ea, Function **result) {
             //print as C
             arch->print->docFunction(fd);
             c_code = ss.str();
-            ss.str("");
 #ifdef DEBUG
             msg("Printing C str\n");
             msg("%s\n", c_code.c_str());
             msg("Done printing C str\n");
 #endif
 
+            ss.str("");
             arch->print->setMarkup(true);
             arch->print->docFunction(fd);
             arch->print->setMarkup(false);
 
-            istringstream instr(ss.str());
-            XmlElement *root = build_from_packed(instr);
+            string pbuf = ss.str();
+            const uint8_t* begin = (const uint8_t*)pbuf.c_str();
+            const uint8_t* end = (const uint8_t*)(pbuf.c_str() + pbuf.size());
+
+            //we need to work with raw bytes
+            vector<uint8_t> packed(begin, end);
+
+            XmlElement *root = build_from_packed(packed);
 
 #ifdef DEBUG
             dump_tree(root);
+            FILE* ff = fopen("packed.bin", "wb");
+            fwrite(pbuf.c_str(), 1, pbuf.size(), ff);
+            fclose(ff);
 #endif
 
             *result = func_from_tree(root, start_ea);

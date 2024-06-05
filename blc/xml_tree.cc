@@ -17,6 +17,7 @@
    Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+#include "marshal.hh"
 #include "xml_tree.hh"
 #include "ida_minimal.hh"
 
@@ -27,6 +28,8 @@
 #else
 #define dmsg(x, ...)
 #endif
+
+using namespace ghidra;
 
 #ifdef DEBUG_XML_TREE
 
@@ -440,12 +443,15 @@ const string &XmlElement::getContent() {
     return empty;
 }
 
-uint64_t get_int(istream &f, uint32_t l) {
+uint64_t get_int(vector<uint8_t> &packed, size_t &idx, uint32_t l) {
     uint64_t r = 0;
-    uint8_t b;
     for (uint32_t i = 0; i < l; i++) {
         r <<= 7;
-        f >> b;
+        if (idx >= packed.size()) {
+            dmsg("Unexpected end of buffer in get_int\n");
+            return r;
+        }
+        uint8_t b = packed[idx++];
         if (b & 0x80) {
             r += b & 0x7f;
         }
@@ -457,40 +463,39 @@ uint64_t get_int(istream &f, uint32_t l) {
     return r;
 }
 
-XmlElement *parse(XmlElement *parent, istream &f) {
+// Most of the information for parsing comes from the Ghidra files marshal.hh and marshal.cc
+// See PackedEncode and PackedDecode classes.
+
+XmlElement *parse(XmlElement *parent, vector<uint8_t> &packed, size_t &idx) {
     uint64_t v;
     XmlElement *self = NULL;
-    while (1) {
-        uint8_t b;
-        f >> b;
-        if (f.eof()) {
-            break;
-        }
-        uint8_t tag = b & 0xC0;
-        uint32_t iiiii = b & 0x1f;
-        uint8_t next = b & 0x20;
+    size_t psize = packed.size();
+    while (idx < psize) {
+        uint8_t b = packed[idx++];
+        uint8_t tag = b & PackedFormat::HEADER_MASK;
+        uint32_t iiiii = b & PackedFormat::ELEMENTID_MASK;
+        uint8_t next = b & PackedFormat::HEADEREXTEND_MASK;
         if (next) {
-            uint8_t b2;
-            f >> b2;
-            if (f.eof()) {
+            if (idx >= psize) {
                 dmsg("Unexpected EOF attempting to read b2\n");
                 break;
             }
-            if (b2 & 0x80) {
-                iiiii = (iiiii << 7) + (b2 & 0x7f);
+            uint8_t b2 = packed[idx++];
+            if (b2 & PackedFormat::RAWDATA_MARKER) {
+                iiiii = (iiiii << PackedFormat::RAWDATA_BITSPERBYTE) + (b2 & PackedFormat::RAWDATA_MASK);
             }
             else {
                 dmsg("Expected high bit of b2 to be set: 0x%02x\n", b2);
                 break;
             }
         }
-        if (tag == 0x40) {
+        if (tag == PackedFormat::ELEMENT_START) {
 #ifdef DEBUG_XML_TREE
             dmsg("%*sElement start: %s 0x%x (%d)\n", indent, "", el_map[iiiii].c_str(), iiiii, iiiii);
             indent += 4;
 #endif
             self = new XmlElement(iiiii);
-            parse(self, f);
+            parse(self, packed, idx);
             if (self->tag == ast_tag_break) {
                 delete self;
                 self = NULL;
@@ -501,7 +506,7 @@ XmlElement *parse(XmlElement *parent, istream &f) {
                 parent->addChild(self);
             }
         }
-        else if (tag == 0x80) {
+        else if (tag == PackedFormat::ELEMENT_END) {
 #ifdef DEBUG_XML_TREE
             indent -= 4;
             dmsg("%*sElement end: %s 0x%x (%d), with %u children, and %u attributes\n", indent, "", el_map[iiiii].c_str(), iiiii, iiiii, parent->children.size(), parent->attributes.size());
@@ -511,63 +516,68 @@ XmlElement *parse(XmlElement *parent, istream &f) {
             }
             return self;
         }
-        else if (tag == 0xC0) {
-#ifdef DEBUG_XML_TREE
-            dmsg("%*sAttr start: %s 0x%x (%d)\n", indent, "", attr_map[iiiii].c_str(), iiiii, iiiii);
-#endif
-            uint8_t attr;
-            f >> attr;
-            if (f.eof()) {
+        else if (tag == PackedFormat::ATTRIBUTE) {
+            if (idx >= psize) {
                 dmsg("Unexpected EOF attempting to read attr\n");
                 break;
             }
-            uint8_t tttt = (attr >> 4) & 0xf;
-            uint8_t llll = attr & 0xf;
+            uint8_t attr = packed[idx++];
+#ifdef DEBUG_XML_TREE
+            dmsg("%*sAttr start: %s 0x%x (%d), attr: 0x%hhx\n", indent, "", attr_map[iiiii].c_str(), iiiii, iiiii, attr);
+#endif
+            uint8_t tttt = (attr >> PackedFormat::TYPECODE_SHIFT) & 0xf;
+            uint8_t llll = attr & PackedFormat::LENGTHCODE_MASK;
             switch (tttt) {
-            case 1:  //boolean
+            case PackedFormat::TYPECODE_BOOLEAN:  //boolean
 #ifdef DEBUG_XML_TREE
                 dmsg("%*s    boolean: %d\n", indent, "", llll);
 #endif
                 parent->addAttribute(new XmlAttribute(iiiii, tttt, llll));
                 break;
-            case 2: // positive signed
-                v = get_int(f, llll);
+            case PackedFormat::TYPECODE_SIGNEDINT_POSITIVE: // positive signed
+                v = get_int(packed, idx, llll);
 #ifdef DEBUG_XML_TREE
                 dmsg("%*s    Positive signed: 0x%x (%d)\n", indent, "", v, v);
 #endif
                 parent->addAttribute(new XmlAttribute(iiiii, tttt, v));
                 break;
-            case 3: // negative signed
-                v = get_int(f, llll);
+            case PackedFormat::TYPECODE_SIGNEDINT_NEGATIVE: // negative signed
+                v = get_int(packed, idx, llll);
 #ifdef DEBUG_XML_TREE
                 dmsg("%*s    Negative signed: -0x%x (-%d)\n", indent, "", v, v);
 #endif
                 parent->addAttribute(new XmlAttribute(iiiii, tttt, v));
                 break;
-            case 4: // unsigned
-                v = get_int(f, llll);
+            case PackedFormat::TYPECODE_UNSIGNEDINT: // unsigned
+                v = get_int(packed, idx, llll);
 #ifdef DEBUG_XML_TREE
                 dmsg("%*s    Unsigned: 0x%x (%d)\n", indent, "", v, v);
 #endif
                 parent->addAttribute(new XmlAttribute(iiiii, tttt, v));
                 break;
-            case 5: // basic address space
-                v = get_int(f, llll);
+            case PackedFormat::TYPECODE_ADDRESSSPACE: // basic address space
+                v = get_int(packed, idx, llll);
 #ifdef DEBUG_XML_TREE
                 dmsg("%*s    Basic address space: 0x%x (%d)\n", indent, "", v, v);
 #endif
                 parent->addAttribute(new XmlAttribute(iiiii, tttt, v));
                 break;
-            case 6: // special address space
+            case PackedFormat::TYPECODE_SPECIALSPACE: // special address space
 #ifdef DEBUG_XML_TREE
                 dmsg("%*s    Special address space: %s\n", indent, "", specials[llll].c_str());
 #endif
                 parent->addAttribute(new XmlAttribute(iiiii, tttt, llll));
                 break;
-            case 7: { // string
-                v = get_int(f, llll);
+            case PackedFormat::TYPECODE_STRING: { // string
+                v = get_int(packed, idx, llll);
+                if ((idx + v) > psize) {
+                    dmsg("Unexpected end of buffer decoding string attribute\n");
+                    idx = psize; // advance idx to cause outer while loop to break
+                    break;
+                }
                 char *s = new char[v + 1];
-                f.read(s, v);
+                memcpy(s, &packed[idx], v);
+                idx += v;
                 s[v] = 0;
 #ifdef DEBUG_XML_TREE
                 dmsg("%*s    String length: 0x%x (%d)\n", indent, "", v, v);
@@ -578,7 +588,7 @@ XmlElement *parse(XmlElement *parent, istream &f) {
                 break;
             }
             default:
-                dmsg("Unexpected attr type 0x%x (%d)\n", tttt, tttt);
+                dmsg("Unexpected attr type 0x%x (%d) with length %u\n", tttt, tttt, llll);
                 break;
             }
         }
@@ -589,11 +599,12 @@ XmlElement *parse(XmlElement *parent, istream &f) {
     return self;
 }
 
-XmlElement *build_from_packed(istream &ifs) {
+XmlElement *build_from_packed(vector<uint8_t> &packed) {
 #ifdef DEBUG_XML_TREE
     debug_init();
 #endif
-    XmlElement *root = parse(NULL, ifs);
+    size_t idx = 0;
+    XmlElement *root = parse(NULL, packed, idx);
     return root;
 }
 

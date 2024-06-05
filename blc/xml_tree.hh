@@ -31,6 +31,7 @@ using std::string;
 using std::vector;
 using std::istream;
 
+// These come from various ElementId definitions throughout Ghidra decmopiler related files.
 enum ast_tag_t {
     ast_tag_addr = 11,
     ast_tag_range = 12,
@@ -248,6 +249,7 @@ enum ast_tag_t {
     ast_tag_localdb = 228
 };
 
+// Thsee come from various AttributeId defined throughout Ghidra decompiler related files
 enum attr_tag_t {
     attrib_first = 27,
     attrib_last = 28,
@@ -426,7 +428,7 @@ struct XmlElement {
     const string &getContent();
 };
 
-XmlElement *build_from_packed(istream &ifs);
+XmlElement *build_from_packed(vector<uint8_t> &packed);
 
 void dump_tree(XmlElement *, uint32_t indent = 0);
 

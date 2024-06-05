@@ -276,6 +276,15 @@
     <ClCompile Include="modelrules.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="slaformat.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="multiprecision.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="compression.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="action.hh">
@@ -530,6 +539,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="modelrules.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="slaformat.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zconf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="multiprecision.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="compression.hh">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
