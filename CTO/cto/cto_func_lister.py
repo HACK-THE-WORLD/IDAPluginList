@@ -1105,7 +1105,7 @@ class cto_func_lister_t(cto_base.cto_base, ida_kernwin.PluginForm):
                     else:
                         # change the name to modified name that the specific charasters are replaced
                         item.setText(name)
-                        # refresh other cto instanses
+                        # refresh other cto instances
                         self.refresh_all(ea)
                         refreshed = True
                 else:
@@ -1574,10 +1574,10 @@ D: enable/disable Debug mode
 
     def count_func_type(self, func_ea, func_types, uniq=False):
         r = set([])
-        if 'children' in self.func_relations[func_ea]:
+        if func_ea in self.func_relations and 'children' in self.func_relations[func_ea]:
             r = [d for k,(d,ft,_,_) in self.func_relations[func_ea]['children'].items() if ft in func_types]
         if uniq:
-                r = set(r)
+            r = set(r)
         return len(r)
     
     def RegisterFuncToTree(self, parent, func_ea, func_name, ea_dict, idx_dict, other_data=None, row=-1):

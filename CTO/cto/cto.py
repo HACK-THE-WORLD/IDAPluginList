@@ -1807,7 +1807,7 @@ class CallTreeOverviewer(cto_base.cto_base, ida_graph.GraphViewer):
                         first_flag = True
                         for i, ea in enumerate(r):
                             if self.config.debug: self.dbg_print("i: %d, node_ea:%x, loop_ea: %x, additonal_trace_points:%s, related_nodes: %s" % (i, node_ea, ea, str([hex(x).rstrip("L") for x in self.additional_trace_points]), str([hex(x).rstrip("L") for x in self.related_nodes[ea]])))
-                            # if the path starts in the midle of the additional trace points, ignore the first node.
+                            # if the path starts in the middle of the additional trace points, ignore the first node.
                             if first_flag and self.start_ea == start_ea:
                                 # if flag is turned on, remove the additional tracing point and further ones.
                                 if self.config.debug: self.dbg_print("remove_flag turned on, but it will affect next time")
