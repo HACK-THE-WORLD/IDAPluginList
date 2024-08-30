@@ -54,16 +54,17 @@ struct pdbargs_t
   void *user_data;
   uint32 flags;
 #define PDBFLG_DBG_MODULE  0x0001
-#define PDBFLG_ONLY_TYPES  0x0002
+#define PDBFLG_LOAD_TYPES  0x0002
 #define PDBFLG_EFD         0x0004
 #define PDBFLG_COFF_FILE   0x0008
-#define PDBFLG_IS_MINIPDB  0x0010
+#define PDBFLG_LOAD_NAMES  0x0010
+#define PDBFLG_IS_MINIPDB  0x0020
 #define PDBFLG_USE_HTTP    0x0100
 
   pdbargs_t(void)
     : loaded_base(BADADDR),
       user_data(nullptr),
-      flags(0)
+      flags(PDBFLG_LOAD_TYPES|PDBFLG_LOAD_NAMES)
   {}
 
   // If true, we are in a debugging session and the file specified by
@@ -86,11 +87,7 @@ struct pdbargs_t
 //----------------------------------------------------------------------------
 struct pdb_ctx_t : public plugmod_t, public event_listener_t
 {
-  processor_t &ph;
-
-  // PDB search path (in _NT_SYMBOL_PATH format)
-  qstring full_sympath;
-
+  qstring full_sympath; // PDB search path (in _NT_SYMBOL_PATH format)
   peheader_t pe;
 
   // config options

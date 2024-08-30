@@ -28,10 +28,9 @@
 #include <frame.hpp>
 #include <loader.hpp>
 #include <diskio.hpp>
-#include <struct.hpp>
 #include <typeinf.hpp>
 #include <demangle.hpp>
-
+#include <mergemod.hpp>
 #include <intel.hpp>
 #include <network.hpp>
 #include <workarounds.hpp>
@@ -591,56 +590,59 @@ bool pdb_til_builder_t::handle_symbol_at_ea(
     }
   }
 
-  tpinfo_t tpi;
-  if ( get_symbol_type(&tpi, sym) )
+  if ( (pdb_access->pdbargs.flags & PDBFLG_LOAD_TYPES) != 0 )
   {
-    // Apparently _NAME_ is a wrong symbol generated for file names
-    // It has wrong type information, so correct it
-    if ( tag == SymTagData && name == "_NAME_" && tpi.type.get_decltype() == BTF_CHAR )
-      tpi.type = tinfo_t::get_stock(STI_ACHAR); // char []
-    if ( tag == SymTagFunction )
+    tpinfo_t tpi;
+    if ( get_symbol_type(&tpi, sym) )
     {
-      // convert the type again, this time passing function symbol
-      // this allows us to get parameter names and handle static class methods
-      pdb_sym_t *func_sym = pdb_access->create_sym();
-      pdb_sym_janitor_t janitor_pType(func_sym);
-      if ( sym.get_type(func_sym) == S_OK )
+      // Apparently _NAME_ is a wrong symbol generated for file names
+      // It has wrong type information, so correct it
+      if ( tag == SymTagData && name == "_NAME_" && tpi.type.get_decltype() == BTF_CHAR )
+        tpi.type = tinfo_t::get_stock(STI_ACHAR); // char []
+      if ( tag == SymTagFunction )
       {
-        tpinfo_t tpi2;
-        if ( really_convert_type(&tpi2, *func_sym, &sym, SymTagFunctionType) == cvt_ok )
-          tpi.type.swap(tpi2.type); // successfully retrieved
+        // convert the type again, this time passing function symbol
+        // this allows us to get parameter names and handle static class methods
+        pdb_sym_t *func_sym = pdb_access->create_sym();
+        pdb_sym_janitor_t janitor_pType(func_sym);
+        if ( sym.get_type(func_sym) == S_OK )
+        {
+          tpinfo_t tpi2;
+          if ( really_convert_type(&tpi2, *func_sym, &sym, SymTagFunctionType) == cvt_ok )
+            tpi.type.swap(tpi2.type); // successfully retrieved
+        }
       }
-    }
-    if ( tpi.type.is_func() || tag == SymTagFunction )
-    {
-      maybe_func = 1;
-      handle_function_type(sym, ea);
-    }
-    else
-    {
-      maybe_func = -1;
-    }
-    if ( npass != 0 )
-    {
-      bool use_ti = true;
-      func_type_data_t fti;
-      if ( tpi.type.get_func_details(&fti)
-        && fti.empty()
-        && fti.rettype.is_decl_void() )
-      { // sometimes there are functions with linked FunctionType but no parameter or return type info in it
-        // we get better results by not forcing type info on them
-        use_ti = false;
-      }
-      if ( use_ti )
+      if ( tpi.type.is_func() || tag == SymTagFunction )
       {
-        type_created(ea, 0, nullptr, tpi.type);
-        apply_tinfo(ea, tpi.type, TINFO_STRICT);
+        maybe_func = 1;
+        handle_function_type(sym, ea);
+      }
+      else
+      {
+        maybe_func = -1;
+      }
+      if ( npass != 0 )
+      {
+        bool use_ti = true;
+        func_type_data_t fti;
+        if ( tpi.type.get_func_details(&fti)
+          && fti.empty()
+          && fti.rettype.is_decl_void() )
+        { // sometimes there are functions with linked FunctionType but no parameter or return type info in it
+          // we get better results by not forcing type info on them
+          use_ti = false;
+        }
+        if ( use_ti )
+        {
+          type_created(ea, 0, nullptr, tpi.type);
+          apply_tinfo(ea, tpi.type, TINFO_STRICT);
+        }
       }
     }
-  }
-  else if ( maybe_func == 1 )
-  {
-    auto_make_proc(ea); // certainly a func
+    else if ( maybe_func == 1 )
+    {
+      auto_make_proc(ea); // certainly a func
+    }
   }
   pv.apply_name_in_idb(ea, name, maybe_func, pdb_access->get_machine_type());
   return true;
@@ -687,10 +689,7 @@ HRESULT pdb_til_builder_t::handle_function_child(
           tpinfo_t tpi;
           if ( get_symbol_type(&tpi, child_sym) )
           {
-            opinfo_t mt;
-            size_t size;
-            flags64_t flags;
-            if ( get_idainfo64_by_type(&size, &flags, &mt, tpi.type) )
+            if ( tpi.type.get_size() != BADSIZE )
             {
               // DIA's offset is bp-based, not frame-based like in IDA
               if ( is_frame_reg(reg_id) )
@@ -701,18 +700,19 @@ HRESULT pdb_til_builder_t::handle_function_child(
               // for some reason some PDBs have bogus offsets for some params/locals...
               if ( !is_intel386(pdb_access->get_machine_type()) && !is_intel64(pdb_access->get_machine_type())
                 || offset > 0
-                || size <= -offset )
+                || tpi.type.get_size() <= -offset )
               {
-                if ( define_stkvar(pfn, name.c_str(), offset, flags, &mt, size) )
+                if ( define_stkvar(pfn, name.c_str(), offset, tpi.type) )
                 {
                   insn_t insn;
                   insn.ea = pfn->start_ea;
-                  member_t *mptr = get_stkvar(nullptr, insn, *(op_t*)nullptr, offset); //lint !e413 deref null ptr
-                  if ( mptr != nullptr )
+                  tinfo_t frame;
+                  ssize_t stkvar_idx = frame.get_stkvar(nullptr, insn, nullptr, offset);
+                  if ( stkvar_idx != -1 )
                   {
-                    struc_t *sptr = get_frame(pfn);
-                    set_member_tinfo(sptr, mptr, 0, tpi.type, 0);
-                    set_userti(mptr->id);
+                    frame.set_udm_type(stkvar_idx, tpi.type);
+                    tid_t tid = frame.get_udm_tid(stkvar_idx);
+                    set_userti(tid);
                   }
                 }
               }
@@ -968,17 +968,27 @@ static qstring get_input_path()
   return input_path;
 }
 
+#define ADDRESS_FIELD 10
+#define LOAD_TYPES_FIELD 20
+#define LOAD_NAMES_FIELD 30
+#define LOAD_TYPES 0x1
+#define LOAD_NAMES 0x2
+
 //--------------------------------------------------------------------------
 static int idaapi details_modcb(int fid, form_actions_t &fa)
 {
   switch ( fid )
   {
-    // "Types only"
-    case 20:
+    case CB_INIT:
+    case LOAD_TYPES_FIELD:
+    case LOAD_NAMES_FIELD:
       {
-        ushort c;
-        if ( fa.get_checkbox_value(20, &c) )
-          fa.enable_field(10, c == 0); // enable/disable address field
+        ushort types, names;
+        if ( fa.get_rbgroup_value(LOAD_TYPES_FIELD, &types)
+          && fa.get_rbgroup_value(LOAD_NAMES_FIELD, &names) )
+        {
+          fa.enable_field(ADDRESS_FIELD, !(types != 0 && names == 0));
+        }
       }
       break;
   }
@@ -1012,8 +1022,9 @@ static bool ask_pdb_details(pdbargs_t *args)
     "Load PDB file\n"
     "%/"
     "<#Specify the path to the file to load symbols for#~I~nput file:f:0:64::>\n"
-    "<#Specify the loading address of the exe/dll file#~A~ddress   :N10::64::>\n"
-    "<#Load only types, do not rename program locations#~T~ypes only:C20>>\n"
+    "<#Specify the loading address of the exe/dll file#~A~ddress   :N" QSTRINGIZE(ADDRESS_FIELD) "::64::>\n"
+    "<#Load types#Load ~t~ypes:C" QSTRINGIZE(LOAD_TYPES_FIELD) ">\n"
+    "<#Load names#Load ~n~ames:C" QSTRINGIZE(LOAD_NAMES_FIELD) ">>\n"
     "Note: you can specify either a .pdb, or an .exe/.dll file name.\n"
     "In the latter case, IDA will try to find and load\n"
     "the PDB specified in its debug directory.\n"
@@ -1031,13 +1042,17 @@ static bool ask_pdb_details(pdbargs_t *args)
   qstrncpy(buf, src, sizeof(buf));
 
   CASSERT(sizeof(args->loaded_base) == sizeof(ea_t));
-  sval_t typesonly = (args->flags & PDBFLG_ONLY_TYPES) != 0;
-  if ( !ask_form(form, details_modcb, buf, &args->loaded_base, &typesonly) )
+  sval_t load_options = 0;
+  setflag(load_options, LOAD_TYPES, (args->flags & PDBFLG_LOAD_TYPES) != 0);
+  setflag(load_options, LOAD_NAMES, (args->flags & PDBFLG_LOAD_NAMES) != 0);
+
+  if ( !ask_form(form, details_modcb, buf, &args->loaded_base, &load_options) )
     return false;
 
   set_file_by_ext(args, buf);
 
-  setflag(args->flags, PDBFLG_ONLY_TYPES, typesonly != 0);
+  setflag(args->flags, PDBFLG_LOAD_TYPES, (load_options & LOAD_TYPES) != 0);
+  setflag(args->flags, PDBFLG_LOAD_NAMES, (load_options & LOAD_NAMES) != 0);
 
   return true;
 }
@@ -1069,8 +1084,8 @@ fail:
 
   set_file_by_ext(args, tmp.c_str());
 
-  bool typesonly = pdbnode.altval(PDB_TYPESONLY_NODE_IDX) != 0;
-  setflag(args->flags, PDBFLG_ONLY_TYPES, typesonly);
+  setflag(args->flags, PDBFLG_LOAD_TYPES, true);
+  setflag(args->flags, PDBFLG_LOAD_NAMES, pdbnode.altval(PDB_TYPESONLY_NODE_IDX) == 0);
 
   return true;
 }
@@ -1092,14 +1107,33 @@ static bool get_details_from_pe(pdbargs_t *args)
   args->input_path = get_input_path();
   args->loaded_base = penode.altval(PE_ALT_IMAGEBASE);
 
-  return ask_yn(ASKBTN_YES,
-                "AUTOHIDE REGISTRY\nHIDECANCEL\n"
-                "The input file was linked with debug information\n"
-                " and the symbol filename is:\n"
-                "\"%s\"\n"
-                "Do you want to look for this file at the specified path\n"
-                "and the Microsoft Symbol Server?\n",
-                args->pdb_path.c_str()) == ASKBTN_YES;
+  static const char formstr[] =
+    "BUTTON YES Yes\n"
+    "BUTTON NO No\n"
+    "BUTTON CANCEL NONE\n"
+    "Load PDB file\n"
+    "The input file was linked with debug information stored here:\n"
+    "\"%s\"\n"
+    "Do you want to look for this file at the specified path\n"
+    "and the Microsoft Symbol Server?\n"
+    "<#Load types#Load ~t~ypes:C10>\n"
+    "<#Load names#Load ~n~ames:C20>>\n";
+
+  qstring form;
+  form.sprnt(formstr, args->pdb_path.c_str());
+
+  sval_t load_options = 0;
+  setflag(load_options, LOAD_TYPES, (args->flags & PDBFLG_LOAD_TYPES) != 0);
+  setflag(load_options, LOAD_NAMES, (args->flags & PDBFLG_LOAD_NAMES) != 0);
+
+  int res = ask_form(form.begin(), &load_options);
+  if ( res != 1 )
+    return false;
+
+  setflag(args->flags, PDBFLG_LOAD_TYPES, (load_options & LOAD_TYPES) != 0);
+  setflag(args->flags, PDBFLG_LOAD_NAMES, (load_options & LOAD_NAMES) != 0);
+
+  return true;
 }
 
 //-------------------------------------------------------------------------
@@ -1208,7 +1242,7 @@ LOAD_PDB:
     }
   }
 
-  if ( ok && (pdbargs.flags & PDBFLG_ONLY_TYPES) == 0 )
+  if ( ok && (pdbargs.flags & PDBFLG_LOAD_NAMES) != 0 )
   {
     // Now all information is loaded into the database (except names)
     // We are ready to use names.
@@ -1251,11 +1285,11 @@ LOAD_PDB:
 bool idaapi pdb_ctx_t::run(size_t _call_code)
 {
 
-
   // PDB
   pdbargs_t pdbargs;
-  if ( inf_get_filetype() != f_PE && !is_miniidb() )
-    pdbargs.flags |= PDBFLG_ONLY_TYPES;
+  pdbargs.flags |= PDBFLG_LOAD_TYPES;
+  if ( !(inf_get_filetype() != f_PE && !is_miniidb()) )
+    pdbargs.flags |= PDBFLG_LOAD_NAMES;
 
   netnode penode(PE_NODE);
   penode.valobj(&pe, sizeof(pe));
@@ -1369,7 +1403,7 @@ ssize_t idaapi pdb_ctx_t::on_event(ssize_t event_id, va_list va)
 }
 
 //--------------------------------------------------------------------------
-pdb_ctx_t::pdb_ctx_t() : ph(PH)
+pdb_ctx_t::pdb_ctx_t()
 {
   hook_event_listener(HT_IDP, this);
   memset(&pe, 0, sizeof(pe));

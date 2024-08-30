@@ -105,7 +105,7 @@
     <Link>
       <AdditionalOptions>/export:PLUGIN %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>D:\Program Files\IDA Pro 8.3\plugins\pdb.dll</OutputFile>
+      <OutputFile>D:\Program Files\IDA Professional 9.0\plugins\pdb.dll</OutputFile>
       <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_32_pro</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -134,8 +134,8 @@
     <Link>
       <AdditionalOptions>/export:PLUGIN %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>D:\Program Files\IDA Pro 8.3\plugins\pdb64.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64_pro</AdditionalLibraryDirectories>
+      <OutputFile>D:\Program Files\IDA Professional 9.0\plugins\pdb64.dll</OutputFile>
+      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -163,7 +163,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>D:\Program Files\IDA Pro 8.3\plugins\pdb.dll</OutputFile>
+      <OutputFile>D:\Program Files\IDA Professional 9.0\plugins\pdb.dll</OutputFile>
       <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_32_pro</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -194,8 +194,8 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>D:\Program Files\IDA Pro 8.3\plugins\pdb64.dll</OutputFile>
-      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64_pro</AdditionalLibraryDirectories>
+      <OutputFile>D:\Program Files\IDA Professional 9.0\plugins\pdb64.dll</OutputFile>
+      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>

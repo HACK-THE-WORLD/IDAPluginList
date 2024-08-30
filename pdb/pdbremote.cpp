@@ -360,7 +360,10 @@ bool remote_pdb_access_t::load_win32_debugger(void)
   while ( !dbg->init_debugger(server.c_str(), port, pass.c_str(), &dbg_errbuf) )
   {
     if ( batch ) // avoid endless (and useless) loop in batch mode
+    {
+      msg("PDB: Could not load remote Win32 debugger\n");
       return false;
+    }
     if ( !dbg_errbuf.empty() )
       msg("%s\n", dbg_errbuf.begin());
     // hrw

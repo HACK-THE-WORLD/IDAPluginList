@@ -1220,8 +1220,9 @@ bool idaapi pdb_provider_t::apply_module_info(const char *path)
     return false;
   pdbargs_t pdbargs;
   pdbargs.flags = PDBFLG_DBG_MODULE;
-  if ( inf_get_filetype() != f_PE && !is_miniidb() )
-    pdbargs.flags |= PDBFLG_ONLY_TYPES;
+  pdbargs.flags |= PDBFLG_LOAD_TYPES;
+  if ( !(inf_get_filetype() != f_PE && !is_miniidb()) )
+    pdbargs.flags |= PDBFLG_LOAD_NAMES;
   pdbargs.loaded_base = module->base;
   pdbargs.input_path = module->path.c_str();
   show_wait_box("HIDECANCEL\nRetrieving symbol information from '%s'",

@@ -1155,6 +1155,7 @@ cvt_code_t til_builder_t::convert_udt(
     {
       qstring name;
       sym.get_name(&name);
+      ddeb(("PDEB:   convert_udt adding member '%s'\n", name.c_str()));
 
       // is introducing virtual?
       DWORD vfptr_offset = -1;
@@ -1302,8 +1303,10 @@ cvt_code_t til_builder_t::convert_udt(
   bool collect_vft = !vft_creating && !is_vtbl_udt && udt_vft_ord == 0;
 
   #ifdef PDEB
+  static size_t entry_counter = 0;
+  ++entry_counter;
   static int zzlevel = 0;
-  msg("PDEB: %d{ convert_udt '%s' assuming vftable '%s'\n", ++zzlevel, udt_name.c_str(), udt_vft_name.c_str());
+  msg("PDEB: %d{ convert_udt '%s' assuming vftable '%s' ENTRY %" FMT_Z "\n", ++zzlevel, udt_name.c_str(), udt_vft_name.c_str(), entry_counter);
   #endif
   pdb_udt_type_data_t udt;
   if ( is_vtbl_udt )
@@ -2049,7 +2052,7 @@ cvt_code_t til_builder_t::convert_type(
         DWORD type,
         DWORD tag)
 {
-  if ( level == 500 )
+  if ( level == 1000 )
   {
     deb(IDA_DEBUG_DBGINFO, "PDB: the maximum recursion level was reached\n");
     return cvt_failed;
@@ -2291,16 +2294,16 @@ cvt_code_t til_builder_t::create_udt_ref(tinfo_t *out, pdb_udt_type_data_t *udt,
 
   qstring name;
   build_anon_type_name(&name, type.begin(), fields.begin());
-  uint32 id = get_type_ordinal(ti, name.c_str());
-  if ( id == 0 )
+  uint32 ord = get_type_ordinal(ti, name.c_str());
+  if ( ord == 0 )
   {
-    id = alloc_type_ordinal(ti);
-    if ( set_numbered_type(ti, id, NTF_NOBASE|NTF_FIXNAME, name.c_str(), type.begin(), fields.begin()) != TERR_OK )
+    ord = alloc_type_ordinal(ti);
+    if ( tif.set_numbered_type(ti, ord, NTF_NOBASE|NTF_FIXNAME, name.c_str()) != TERR_OK )
       return cvt_failed;
-    type_created(BADADDR, id, nullptr, tif);
+    type_created(BADADDR, ord, nullptr, tif);
   }
 
-  out->create_typedef(ti, id);
+  out->create_typedef(ti, ord);
   return cvt_ok;
 }
 
@@ -2436,13 +2439,10 @@ bool til_builder_t::retrieve_type(
         int ntf_flags = NTF_NOBASE|NTF_FIXNAME;
         if ( defined_wrongly )
           ntf_flags |= NTF_REPLACE;
-        tinfo_code_t code = set_numbered_type(
-              ti,
-              ord,
-              ntf_flags,
-              ns.empty() ? nullptr : ns.c_str(),
-              type.begin(),
-              fields.begin());
+        tinfo_t tif;
+        tinfo_code_t code = tif.deserialize(ti, &type, &fields)
+                          ? tif.set_numbered_type(ti, ord, ntf_flags, ns.empty() ? nullptr : ns.c_str())
+                          : TERR_BAD_TYPE;
         if ( code != TERR_OK )
         {
           ddeb(("PDEB: set_numbered_type(%u, %s) : %s\n", ord, ns.c_str(), tinfo_errstr(code)));
@@ -2642,22 +2642,22 @@ HRESULT til_builder_t::after_iterating(pdb_sym_t &)
 HRESULT til_builder_t::build(pdb_sym_t &global_sym)
 {
   HRESULT hr = before_iterating(global_sym);
-  if (hr == S_OK)
+  if ( hr == S_OK && (pdb_access->pdbargs.flags & PDBFLG_LOAD_TYPES) != 0 )
   {
-	  if ((pdb_access->pdbargs.flags & PDBFLG_IS_MINIPDB) == 0)
-	  {
-		  hr = handle_types(global_sym);
-	  }
+      if ((pdb_access->pdbargs.flags & PDBFLG_IS_MINIPDB) == 0)
+      {
+          hr = handle_types(global_sym);
+      }
   }
-  if ( (pdb_access->pdbargs.flags & PDBFLG_ONLY_TYPES) == 0 )
+  if ( (pdb_access->pdbargs.flags & PDBFLG_LOAD_NAMES) != 0 )
   {
-	  if ((pdb_access->pdbargs.flags & PDBFLG_IS_MINIPDB) == 0)
-	  {
-		  if (hr == S_OK)
-			  hr = handle_symbols(global_sym);
-		  if (hr == S_OK)
-			  hr = handle_globals(global_sym);
-	  }
+      if ((pdb_access->pdbargs.flags & PDBFLG_IS_MINIPDB) == 0)
+      {
+          if (hr == S_OK)
+              hr = handle_symbols(global_sym);
+          if (hr == S_OK)
+              hr = handle_globals(global_sym);
+      }
     // handle_globals() will set the type and undecorated name for globals,
     // and handle_publics() will set the decorated name for public symbols.
     // We want both the type (from handle_globals()) and the decorated symbol

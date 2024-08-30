@@ -1444,7 +1444,8 @@ HRESULT pdb_session_t::open_session(pdbargs_t &pdbargs)
   {
     qwstring wpdb_path;
     utf8_utf16(&wpdb_path, pdb_path.c_str());
-    bool force_load = (pdbargs.flags & (PDBFLG_ONLY_TYPES|PDBFLG_EFD)) != 0;
+    bool force_load = (pdbargs.flags & (PDBFLG_LOAD_TYPES|PDBFLG_EFD)) != 0
+                   && (pdbargs.flags & PDBFLG_LOAD_NAMES) == 0;
     hr = check_and_load_pdb(wpdb_path.c_str(), pdbargs.pdb_sign, force_load, pdbargs);
     if ( hr == E_PDB_INVALID_SIG || hr == E_PDB_INVALID_AGE ) // Mismatching PDB
       goto fail;
