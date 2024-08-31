@@ -1,26 +1,4 @@
 #pragma once
-__if_not_exists(udm_t)
-{
-	typedef udt_member_t udm_t;
-}
-__if_not_exists(edm_t)
-{
-	typedef enum_member_t edm_t;
-}
-struct enum_type_data_t_84 :public enum_type_data_t
-{
-	/// set enum width (nbytes)
-	bool set_nbytes(int nbytes)
-	{
-		if (nbytes < 0 || nbytes > 8 || !is_pow2(nbytes))
-			return false;      // bad width
-		int idb_width = 0;
-		if (nbytes != 0)
-			idb_width = log2ceil(nbytes) + 1;
-		bte = (bte & ~BTE_SIZE_MASK) | idb_width;
-		return true;
-	}
-};
 
 //----------------------------------------------------------------------------
 enum cvt_code_t

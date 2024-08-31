@@ -1993,7 +1993,7 @@ FAILED_ARRAY:
         };
         name_value_collector_t nvc(this);
         if ( size != 0 && size <= 64 )
-          ((enum_type_data_t_84&)nvc.ei).set_nbytes(size);
+          nvc.ei.set_nbytes(size);
         HRESULT hr = pdb_access->iterate_children(sym, SymTagNull, nvc);
         if ( FAILED(hr) )
         { // symbol already exists or
