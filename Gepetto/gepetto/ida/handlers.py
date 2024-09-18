@@ -8,7 +8,7 @@ import ida_hexrays
 import idc
 
 import gepetto.config
-from gepetto.models.base import get_model
+from gepetto.models.model_manager import instantiate_model
 
 
 def comment_callback(address, view, response):
@@ -38,6 +38,23 @@ def comment_callback(address, view, response):
         view.refresh_view(False)
     print(_("{model} query finished!").format(model=str(gepetto.config.model)))
 
+# -----------------------------------------------------------------------------
+
+def conversation_callback(response, memory):
+    """
+    Callback that simply prints the model's response in IDA's output window.
+    :param response: The response returned by the model
+    :param memory: The list of messages exchanged so far, so that it can be updated.
+    :return:
+    """
+    memory.append({"role": "assistant", "content": response})
+
+    print()
+    for line in response.split("\n"):
+        if not line.strip():
+            continue
+        print(f"{str(gepetto.config.model)}> {line}")
+    print()
 
 # -----------------------------------------------------------------------------
 
@@ -58,6 +75,7 @@ class ExplainHandler(idaapi.action_handler_t):
             _("Can you explain what the following C function does and suggest a better name for "
               "it?\n{decompiler_output}").format(decompiler_output=str(decompiler_output)),
             functools.partial(comment_callback, address=idaapi.get_screen_ea(), view=v))
+        print(_("Request to {model} sent...").format(model=str(gepetto.config.model)))
         return 1
 
     # This action is always available.
@@ -67,14 +85,13 @@ class ExplainHandler(idaapi.action_handler_t):
 
 # -----------------------------------------------------------------------------
 
-def rename_callback(address, view, response, retries=0):
+def rename_callback(address, view, response):
     """
     Callback that extracts a JSON array of old names and new names from the
     response and sets them in the pseudocode.
     :param address: The address of the function to work on
     :param view: A handle to the decompiler window
     :param response: The response from the model
-    :param retries: The number of times that we received invalid JSON
     """
     names = json.loads(response)
 
@@ -127,6 +144,7 @@ class RenameHandler(idaapi.action_handler_t):
               "JSON dictionary.").format(decompiler_output=str(decompiler_output)),
             functools.partial(rename_callback, address=idaapi.get_screen_ea(), view=v),
             additional_model_options={"response_format": {"type": "json_object"}})
+        print(_("Request to {model} sent...").format(model=str(gepetto.config.model)))
         return 1
 
     # This action is always available.
@@ -148,13 +166,13 @@ class SwapModelHandler(idaapi.action_handler_t):
 
     def activate(self, ctx):
         try:
-            gepetto.config.model = get_model(self.new_model)
+            gepetto.config.model = instantiate_model(self.new_model)
         except ValueError as e:  # Raised if an API key is missing. In which case, don't switch.
             print(_("Couldn't change model to {model}: {error}").format(model=self.new_model, error=str(e)))
             return
         gepetto.config.update_config("Gepetto", "MODEL", self.new_model)
         # Refresh the menus to reflect which model is currently selected.
-        self.plugin.generate_plugin_select_menu()
+        self.plugin.generate_model_select_menu()
 
     def update(self, ctx):
         return idaapi.AST_ENABLE_ALWAYS
