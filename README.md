@@ -33,3 +33,4 @@ IDA插件集合，含项目名称及项目地址。
 10. 集成Ghidra于IDA上的插件，通过F3即可调用（目前只支持7.7）：https://github.com/airbus-cert/Yagi
 11. 集成Ghidra于IDA上的插件（支持8.3）：https://github.com/cseagle/blc
 12. 一键导出所有伪代码：https://github.com/jitcor/export_func_code
+13. AI MCP赋能逆向：https://github.com/mrexodia/ida-pro-mcp
