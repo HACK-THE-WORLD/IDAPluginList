@@ -53,11 +53,12 @@
       <CallingConvention>StdCall</CallingConvention>
       <DisableSpecificWarnings>4800;4244;4996;4018;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <Optimization>Disabled</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalOptions>/export:PLUGIN %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_64</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -68,7 +69,7 @@
     </Link>
     <PostBuildEvent />
     <PostBuildEvent>
-      <Command>XCOPY /i /d /y $(TargetPath) "D:\Program Files\IDA Professional 9.3\plugins\"</Command>
+      <Command>XCOPY /i /d /y $(TargetPath) "D:\Program Files\IDA Professional 9.3 SP1\plugins\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -85,10 +86,11 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CallingConvention>StdCall</CallingConvention>
       <DisableSpecificWarnings>4800;4244;4996;4018;4068;4200;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalDependencies>diaguids.lib;wsock32.lib;ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_vc_64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(VSInstallDir)\DIA SDK\lib\amd64;..\..\lib\x64_win_64</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -101,7 +103,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>XCOPY /i /d /y $(TargetPath) "D:\Program Files\IDA Professional 9.3\plugins\"</Command>
+      <Command>XCOPY /i /d /y $(TargetPath) "D:\Program Files\IDA Professional 9.3 SP1\plugins\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

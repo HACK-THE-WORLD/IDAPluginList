@@ -1211,11 +1211,6 @@ source_item_iterator idaapi pdb_provider_t::create_item_iterator(const source_fi
 //-------------------------------------------------------------------------
 bool idaapi pdb_provider_t::apply_module_info(const char *path)
 {
-#ifdef ENABLE_REMOTEPDB
-  if ( !is_win32_remote_debugger_loaded() )
-    return false;
-#endif
-
   pdb_modinfo_t *module = find_module(path);
   if ( module == nullptr )
     return false;
