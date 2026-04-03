@@ -40,7 +40,7 @@ class BasicBlockSummary(TypedDict):
 class AnalyzeFunctionResult(TypedDict, total=False):
     addr: str
     name: str
-    prototype: str
+    prototype: str | None
     size: int
     decompiled: str | None
     decompile_truncated: int
@@ -52,13 +52,13 @@ class AnalyzeFunctionResult(TypedDict, total=False):
     xrefs: dict[str, Any]
     comments: dict[str, Any]
     basic_blocks: BasicBlockSummary
-    error: str
+    error: str | None
 
 
 class ComponentFunctionSummary(TypedDict, total=False):
     addr: str
     name: str
-    prototype: str
+    prototype: str | None
     size: int
     callees: list[str]
     strings: list[str]
@@ -218,7 +218,7 @@ def _analyze_function_internal(
     Pass include_asm=True to include full disassembly."""
     import idaapi
 
-    result: dict = {"addr": hex(ea)}
+    result: dict = {"addr": hex(ea), "error": None}
 
     try:
         func = idaapi.get_func(ea)

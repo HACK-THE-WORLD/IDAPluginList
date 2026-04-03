@@ -468,9 +468,10 @@ class StackFrameVariable(TypedDict):
 class DisassemblyFunction(TypedDict):
     name: str
     start_ea: str
+    segment: NotRequired[str]
     return_type: NotRequired[str]
     arguments: NotRequired[list[Argument]]
-    stack_frame: list[StackFrameVariable]
+    stack_frame: NotRequired[list[StackFrameVariable]]
     lines: list[DisassemblyLine]
 
 
@@ -768,6 +769,7 @@ def get_type_by_name(type_name: str) -> ida_typeinf.tinfo_t:
         "int64",
         "__int64",
         "int64_t",
+        "signed __int64",
         "long long",
         "long long int",
         "signed long long",
@@ -779,6 +781,7 @@ def get_type_by_name(type_name: str) -> ida_typeinf.tinfo_t:
         "__uint64",
         "uint64_t",
         "unsigned int64",
+        "unsigned __int64",
         "unsigned long long",
         "unsigned long long int",
         "qword",
@@ -819,7 +822,12 @@ def get_type_by_name(type_name: str) -> ida_typeinf.tinfo_t:
         return tif
     if tif.get_named_type(None, type_name, ida_typeinf.BTF_UNION):
         return tif
-    if tif := ida_typeinf.tinfo_t(type_name):
+
+    # Try parse_decl for arbitrary type expressions (works in IDA 9.0+)
+    tif = ida_typeinf.tinfo_t()
+    flags = ida_typeinf.PT_SIL | ida_typeinf.PT_TYP
+    candidate = type_name if type_name.endswith(";") else type_name + ";"
+    if ida_typeinf.parse_decl(tif, None, candidate, flags) is not None and not tif.empty():
         return tif
 
     raise IDAError(f"Unable to retrieve {type_name} type info object")
@@ -1028,9 +1036,11 @@ def decompile_function_safe(ea: int) -> Optional[str]:
         lines = []
         for sl in sv:
             sl: ida_kernwin.simpleline_t
+            _head = ida_hexrays.ctree_item_t()
             item = ida_hexrays.ctree_item_t()
+            _tail = ida_hexrays.ctree_item_t()
             line_ea = None
-            if cfunc.get_line_item(sl.line, 0, False, None, item, None):
+            if cfunc.get_line_item(sl.line, 0, False, _head, item, _tail):
                 dstr: str | None = item.dstr()
                 if dstr:
                     ds = dstr.split(": ")
