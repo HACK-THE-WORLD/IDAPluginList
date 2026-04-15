@@ -3,7 +3,7 @@
 from idaapi import plugin_t
 from idaapi import PLUGIN_PROC
 from idaapi import PLUGIN_OK
-from PyQt5 import QtWidgets
+from PySide6 import QtWidgets
 
 import os
 import ida_nalt
