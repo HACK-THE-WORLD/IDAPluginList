@@ -5,7 +5,7 @@ import signal
 import sys
 import os
 from pathlib import Path
-from typing import Annotated, Any, Optional, TypedDict
+from typing import Annotated, Any, NotRequired, Optional, TypedDict
 
 # idapro must go first to initialize idalib
 import idapro
@@ -24,9 +24,10 @@ from ida_pro_mcp.ida_mcp.http import IdaMcpHttpRequestHandler
 from ida_pro_mcp.idalib_session_manager import get_session_manager
 
 class IdalibContextFields(TypedDict):
-    context_id: str
-    transport_context_id: str | None
-    isolated_contexts: bool
+    # Optional because error paths can fail before a request context is resolved.
+    context_id: NotRequired[str]
+    transport_context_id: NotRequired[str | None]
+    isolated_contexts: NotRequired[bool]
 
 
 class IdalibSessionInfo(TypedDict):
@@ -37,6 +38,12 @@ class IdalibSessionInfo(TypedDict):
     last_accessed: str
     is_analyzing: bool
     metadata: dict[str, Any]
+
+
+class IdalibSessionListInfo(IdalibSessionInfo, total=False):
+    is_active: bool
+    is_current_context: bool
+    bound_contexts: int
 
 
 class IdalibOpenResult(IdalibContextFields, total=False):
@@ -66,7 +73,7 @@ class IdalibUnbindResult(IdalibContextFields, total=False):
 
 
 class IdalibListResult(IdalibContextFields, total=False):
-    sessions: list[IdalibSessionInfo]
+    sessions: list[IdalibSessionListInfo]
     count: int
     current_context_session_id: str | None
     error: str
@@ -118,6 +125,7 @@ IDALIB_MANAGEMENT_TOOLS = {
     "idalib_health",
     "idalib_warmup",
 }
+IDALIB_HIDDEN_PLUGIN_TOOLS = {"list_instances", "select_instance"}
 
 _ISOLATED_CONTEXTS_ENABLED = False
 
@@ -571,6 +579,10 @@ def main():
     # In isolated mode we require Streamable HTTP session semantics.
     MCP_SERVER.require_streamable_http_session = _ISOLATED_CONTEXTS_ENABLED
 
+    for name in IDALIB_HIDDEN_PLUGIN_TOOLS:
+        MCP_SERVER.tools.methods.pop(name, None)
+    logger.info("GUI-plugin routing tools disabled under idalib")
+
     # Gate unsafe tools: remove them from the registry unless --unsafe is set.
     if not args.unsafe:
         for name in MCP_UNSAFE:
@@ -599,6 +611,10 @@ def main():
         )
 
     _install_context_activation_hooks()
+
+    from ida_pro_mcp.ida_mcp import trace
+    trace.install_tracer()
+    logger.info("Tracing tools/call to IDB netnode %s", trace.IDB_NETNODE_NAME)
 
     # NOTE: npx -y @modelcontextprotocol/inspector for debugging
     # TODO: with background=True the main thread does not fake any

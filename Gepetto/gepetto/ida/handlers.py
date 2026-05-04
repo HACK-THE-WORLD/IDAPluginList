@@ -149,10 +149,34 @@ def rename_callback(address, view, response, start_time):
     response_text = response.content if hasattr(response, "content") else response
     if not isinstance(response_text, str):
         response_text = str(response_text)
+
+    names = None
+    # Try parsing as-is first
     try:
         names = json.loads(response_text)
-    except Exception as exc:
-        error_message = _("[ERROR] rename callback JSON failure: {error}").format(error=str(exc))
+    except Exception:
+        pass
+
+    # Try extracting JSON from markdown code fences
+    if names is None:
+        fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", response_text, re.DOTALL)
+        if fence_match:
+            try:
+                names = json.loads(fence_match.group(1))
+            except Exception:
+                pass
+
+    # Try finding a bare JSON object in the text
+    if names is None:
+        brace_match = re.search(r"\{[^{}]*\}", response_text, re.DOTALL)
+        if brace_match:
+            try:
+                names = json.loads(brace_match.group(0))
+            except Exception:
+                pass
+
+    if names is None:
+        error_message = _("[ERROR] rename callback JSON failure: no valid JSON found in response")
         print(error_message)
         STATUS_PANEL.mark_error(error_message)
         return
