@@ -69,7 +69,7 @@
     </Link>
     <PostBuildEvent />
     <PostBuildEvent>
-      <Command>XCOPY /i /d /y $(TargetPath) "D:\Program Files\IDA Professional 9.3 SP1\plugins\"</Command>
+      <Command>XCOPY /i /d /y $(TargetPath) "$(LATEST_IDADIR)\plugins\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -103,7 +103,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>XCOPY /i /d /y $(TargetPath) "D:\Program Files\IDA Professional 9.3 SP1\plugins\"</Command>
+      <Command>XCOPY /i /d /y $(TargetPath) "$(LATEST_IDADIR)\plugins\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
