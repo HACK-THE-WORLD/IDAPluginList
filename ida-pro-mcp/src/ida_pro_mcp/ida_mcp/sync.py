@@ -91,7 +91,13 @@ def _sync_wrapper(ff, keep_batch=False):
 
     def runned():
         if not call_stack.empty():
-            last_func_name = call_stack.get()
+            # Non-blocking: a concurrent reentrant @idasync call from
+            # within another tool's ff() on the same main thread may
+            # have drained the queue between empty() and get().
+            try:
+                last_func_name = call_stack.get_nowait()
+            except queue.Empty:
+                last_func_name = "<empty>"
             error_str = f"Call stack is not empty while calling the function {ff.__name__} from {last_func_name}"
             raise IDASyncError(error_str)
 
@@ -110,7 +116,14 @@ def _sync_wrapper(ff, keep_batch=False):
             if not (completed and keep_batch):
                 idc.batch(old_batch)
             _sync_state.pre_call_batch = prev_pre_call
-            call_stack.get()
+            # Non-blocking: a reentrant @idasync invoked synchronously
+            # inside ff() may have already popped our entry. Default
+            # block=True would freeze the IDA main thread on an empty
+            # queue and hang every subsequent @idasync call.
+            try:
+                call_stack.get_nowait()
+            except queue.Empty:
+                pass
 
     idaapi.execute_sync(runned, idaapi.MFF_WRITE)
     res = res_container.get()
