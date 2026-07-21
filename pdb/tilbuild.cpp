@@ -500,8 +500,11 @@ callcnv_t til_builder_t::convert_cc(DWORD cc0) const
 {
   switch ( cc0 )
   {
-    case CV_CALL_GENERIC    :
     case CV_CALL_NEAR_C     :
+      if ( use_rust_cc() )
+        return inf_get_callcnv();
+      [[fallthrough]];
+    case CV_CALL_GENERIC    :
     case CV_CALL_FAR_C      :
       return inf_is_64bit() ? CM_CC_FASTCALL : CM_CC_CDECL;
     case CV_CALL_NEAR_PASCAL:
@@ -1294,6 +1297,19 @@ cvt_code_t til_builder_t::convert_udt(
       if ( !tb->retrieve_type(&tpi, name.c_str(), sym, parent) )
         return S_OK;
 
+      // rust: core::marker::PhantomData<T>
+      // Zero-Sized Type, placeholder
+      if ( tpi.cvt_code == cvt_typedef && tpi.type.get_size() == BADSIZE )
+      {
+        qstring tname;
+        if ( tpi.type.get_type_name(&tname)
+          && tname.starts_with("core::marker::PhantomData<", 26) )
+        {
+          // should not present in the compiled code
+          return S_OK;
+        }
+      }
+
       if ( is_intro_virtual )
       {
         if ( vftinfo != nullptr )
@@ -1807,7 +1823,11 @@ cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int
   if ( (tinfo_udt.taudt_bits & TAUDT_VFTABLE) != 0 )
     tinfo_udt.deduplicate_members();
   if ( !out->create_udt(tinfo_udt, bt) )
+  {
+    dump_pdb_udt(*udt, udt_name);
+    deb(IDA_DEBUG_DBGINFO, "PDB: Failed to create struct '%s'\n", udt_name != nullptr ? udt_name : "");
     return cvt_failed;
+  }
   if ( !out->calc_udt_aligns(SUDT_GAPS|SUDT_UNEX) )
   {
     dump_pdb_udt(*udt, udt_name);

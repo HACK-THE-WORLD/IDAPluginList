@@ -13,7 +13,7 @@
 
 #include "msdia.hpp"
 
-#include "../../ldr/pe/pe.h"
+#include <ldr/pe/pe.h>
 #include "pdblocal.cpp"
 #include "dia2_internal.h"
 #include "Program.h"
@@ -487,7 +487,7 @@ static DWORD get_machine_type(DWORD dwMachType)
     case IMAGE_FILE_MACHINE_ARM:
       machine = CV_CFL_ARM6;
       break;
-    case PECPU_ARMV7:
+    case PECPU_ARMNT:
       machine = CV_CFL_ARM7;
       break;
     case PECPU_ARM64:

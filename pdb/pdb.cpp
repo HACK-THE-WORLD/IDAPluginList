@@ -31,6 +31,7 @@
 #include <typeinf.hpp>
 #include <demangle.hpp>
 #include <mergemod.hpp>
+#include <cvt64.hpp>
 #include <intel.hpp>
 #include <network.hpp>
 #include <workarounds.hpp>
@@ -60,9 +61,7 @@ int data_id;
 #endif
 #include "tilbuild.cpp"
 
-
 #include "sip.cpp"
-
 
 //----------------------------------------------------------------------
 static bool looks_like_function_name(const char *name)
@@ -315,8 +314,8 @@ bool pdb_ctx_t::apply_name_in_idb(ea_t ea, const qstring &name, int maybe_func, 
   }
 
   // do not automatically create functions in debugger segments
-  segment_t *s = getseg(ea);
-  if ( s == nullptr || !s->is_loader_segm() )
+  segment_info_t si;
+  if ( !get_segment_info(&si, ea) || !si.is_loader_segm() )
     return true;
 
   // ARMv7 PDBs don't use bit 0 for Thumb mode
@@ -668,13 +667,13 @@ HRESULT pdb_til_builder_t::handle_function_child(
       {
         if ( enregistered_bug && reg_id > 0 )
           reg_id--;
-        func_t *pfn = get_func(ea);
         qstring name;
         child_sym.get_name(&name);
         qstring canon;
         print_pdb_register(&canon, pdb_access->get_machine_type(), reg_id);
-        if ( pfn != nullptr )
-          add_regvar(pfn, pfn->start_ea, pfn->end_ea, canon.c_str(), name.c_str(), nullptr);
+        func_entry_info_t fi;
+        if ( get_func_entry_info(&fi, ea) )
+          add_func_regvar(fi.start_ea, fi.start_ea, fi.end_ea, canon.c_str(), name.c_str(), nullptr);
       }
       break;
 
@@ -684,8 +683,8 @@ HRESULT pdb_til_builder_t::handle_function_child(
         && (is_frame_reg(reg_id) || is_stack_reg(reg_id)) )
         // attempt at handling both stack and frame regs (was ebp only)
       {
-        func_t *pfn = get_func(ea);
-        if ( pfn != nullptr )
+        func_entry_info_t fi;
+        if ( get_func_entry_info(&fi, ea) )
         {
           qstring name;
           child_sym.get_name(&name);
@@ -696,19 +695,19 @@ HRESULT pdb_til_builder_t::handle_function_child(
             {
               // DIA's offset is bp-based, not frame-based like in IDA
               if ( is_frame_reg(reg_id) )
-                offset -= pfn->fpd;
+                offset -= fi.get_fpd();
               else // SP-based; turn into frame-based
-                offset -= pfn->frsize;
+                offset -= fi.get_frsize();
               // make sure the new variable is not overwriting the return address
               // for some reason some PDBs have bogus offsets for some params/locals...
               if ( !is_intel386(pdb_access->get_machine_type()) && !is_intel64(pdb_access->get_machine_type())
                 || offset > 0
                 || tpi.type.get_size() <= -offset )
               {
-                if ( define_stkvar(pfn, name.c_str(), offset, tpi.type) )
+                if ( define_stkvar_ea(fi.start_ea, name.c_str(), offset, tpi.type) )
                 {
                   insn_t insn;
-                  insn.ea = pfn->start_ea;
+                  insn.ea = fi.start_ea;
                   tinfo_t frame;
                   ssize_t stkvar_idx = frame.get_stkvar(nullptr, insn, nullptr, offset);
                   if ( stkvar_idx != -1 )
@@ -756,8 +755,8 @@ void pdb_til_builder_t::handle_function_type(pdb_sym_t &sym, ea_t ea)
 
     // before adding a function, try to create all its instructions.
     // without this the frame analysis may fail.
-    func_t fn(ea);
-    find_func_bounds(&fn, FIND_FUNC_DEFINE);
+    func_entry_info_t fn(ea);
+    find_function_bounds(&fn, FIND_FUNC_DEFINE);
 
     bool created = false;
     bool acceptable_end = end <= next_planned;   // end is wrong for fragmented functions
@@ -806,23 +805,42 @@ static HRESULT remote_handler(pdb_ctx_t &pv, const pdbargs_t &args)
 }
 #endif
 
+// forward declarations; defined in pdb_pdbida.cpp
+static bool get_pdb_path_override(pdbargs_t *args, netnode penode);
+static bool skip_pdb_details_dialog(const pdbargs_t *args);
+#ifndef PDB_PDBIDA_DEFINED
+struct pdbida_state_t {};
+#endif
+static bool try_pdbida_first(pdb_ctx_t &pv, pdbargs_t &pdbargs, bool *ok, HRESULT *hr);
+static void pdbida_apply_end(const pdbida_state_t &st, const char *pdb_path);
+static bool handle_coff_run(pdb_ctx_t &pv, size_t call_code, bool *run_result);
+static bool parse_pdbida_option(pdb_ctx_t &pv, const char *opt);
+static const cfgopt_t *get_g_opts(size_t *count);
+static void pdb_add_test_feature();
 
 /*====================================================================
                       IDA PRO INTERFACE START HERE
 ====================================================================*/
 
 //-------------------------------------------------------------------------
-static const cfgopt_t g_opts[] =
+#define PDB_BASE_OPTS \
+  CFGOPT_R ("PDB_REMOTE_PORT",    pdb_ctx_t, pdb_remote_port,    0, 65535), \
+  CFGOPT_R ("PDB_REMOTE_PORT_64", pdb_ctx_t, pdb_remote_port_64, 0, 65535), \
+  CFGOPT_QS("_NT_SYMBOL_PATH",    pdb_ctx_t, full_sympath,       true), \
+  CFGOPT_QS("PDB_REMOTE_SERVER",  pdb_ctx_t, pdb_remote_server,  true), \
+  CFGOPT_QS("PDB_REMOTE_PASSWD",  pdb_ctx_t, pdb_remote_passwd,  true), \
+  CFGOPT_R ("PDB_NETWORK",        pdb_ctx_t, pdb_network,        PDB_NETWORK_OFF, PDB_NETWORK_ON), \
+  CFGOPT_R ("PDB_PROVIDER",       pdb_ctx_t, pdb_provider,       PDB_PROVIDER_MSDIA, PDB_PROVIDER_PDBIDA), \
+  CFGOPT_QS("PDB_MSDIA_FALLBACK", pdb_ctx_t, pdb_fallback,       true)
+
+#ifndef PDB_PDBIDA_DEFINED
+static const cfgopt_t *get_g_opts(size_t *count)
 {
-  CFGOPT_R ("PDB_REMOTE_PORT",    pdb_ctx_t, pdb_remote_port,    0, 65535),
-  CFGOPT_R ("PDB_REMOTE_PORT_64", pdb_ctx_t, pdb_remote_port_64, 0, 65535),
-  CFGOPT_QS("_NT_SYMBOL_PATH",    pdb_ctx_t, full_sympath,       true),
-  CFGOPT_QS("PDB_REMOTE_SERVER",  pdb_ctx_t, pdb_remote_server,  true),
-  CFGOPT_QS("PDB_REMOTE_PASSWD",  pdb_ctx_t, pdb_remote_passwd,  true),
-  CFGOPT_R ("PDB_NETWORK",        pdb_ctx_t, pdb_network,        PDB_NETWORK_OFF, PDB_NETWORK_ON),
-  CFGOPT_R("PDB_PROVIDER",		  pdb_ctx_t, pdb_provider,       PDB_PROVIDER_MSDIA, PDB_PROVIDER_PDBIDA),
-  CFGOPT_QS("PDB_MSDIA_FALLBACK", pdb_ctx_t, opt_fallback,       true),
-};
+  static const cfgopt_t opts[] = { PDB_BASE_OPTS };
+  *count = qnumber(opts);
+  return opts;
+}
+#endif
 
 //----------------------------------------------------------------------
 #ifndef ENABLE_REMOTEPDB
@@ -860,7 +878,13 @@ void pdb_ctx_t::init_sympaths()
 {
   // user specified symbol path?
   full_sympath.qclear();
-  read_config_file2("pdb", g_opts, qnumber(g_opts), nullptr, nullptr, 0, this);
+  size_t nopts;
+  const cfgopt_t *opts = get_g_opts(&nopts);
+  read_config_file2("pdb", opts, nopts, nullptr, nullptr, 0, this);
+#ifdef PDBIDA
+  if ( opt_fallback != -1 )
+    pdb_fallback = opt_fallback == 1;
+#endif
   if (pdb_provider != PDB_PROVIDER_MSDIA)
   {
 	  msg("PDB: This modified version of PDB plug-in currently only supports MSDIA interface\n");
@@ -898,7 +922,7 @@ void pdb_ctx_t::init_sympaths()
 //----------------------------------------------------------------------
 #define MAX_DISP_PATH 80
 // If path name is too long then replace some directories with "...."
-static qstring truncate_path(const qstring &path)
+static qstring truncate_path(const qstring &path) //lint -e528
 {
   qstring str = path;
   int len = str.length();
@@ -1096,6 +1120,8 @@ static bool get_pdb_path(pdbargs_t *args, netnode penode)
 {
   penode.supstr(&args->pdb_path, PE_SUPSTR_PDBNM);
 
+  if ( get_pdb_path_override(args, penode) )
+    return true;
   return !args->pdb_path.empty(); // do not ask to load pdb with empty name
 }
 
@@ -1108,6 +1134,8 @@ static bool get_details_from_pe(pdbargs_t *args)
   args->input_path = get_input_path();
   args->loaded_base = penode.altval(PE_ALT_IMAGEBASE);
 
+  if ( skip_pdb_details_dialog(args) )
+    return true;
   static const char form[] =
     "BUTTON YES ~Y~es\n"
     "BUTTON NO ~N~o\n"
@@ -1136,7 +1164,7 @@ static bool get_details_from_pe(pdbargs_t *args)
 }
 
 //-------------------------------------------------------------------------
-static bool ask_for_pdb_file(pdbargs_t *pdbargs, const char *err_str)
+static bool ask_for_pdb_file(pdbargs_t *pdbargs, const char *err_str) //lint -e528
 {
   qstring disp_path = truncate_path(pdbargs->input_path);
   if ( ask_yn(ASKBTN_YES,
@@ -1160,6 +1188,8 @@ static bool ask_for_pdb_file(pdbargs_t *pdbargs, const char *err_str)
 //-------------------------------------------------------------------------
 bool pdb_ctx_t::apply_debug_info(pdbargs_t &pdbargs)
 {
+  pdb_add_test_feature();
+
   // we may run out of memory on huge pdb files. prefer to keep the partial
   // idb file in this case.
   bool restore_kill_flag = is_database_flag(DBFL_KILL);
@@ -1177,6 +1207,8 @@ bool pdb_ctx_t::apply_debug_info(pdbargs_t &pdbargs)
   bool ok = true;
   HRESULT hr = E_FAIL;
 
+  pdbida_state_t pdbida_state;
+  if ( !try_pdbida_first(*this, pdbargs, &ok, &hr) )
   {
     msg("PDB: using MSDIA provider\n");
 #ifdef ENABLE_REMOTEPDB
@@ -1282,12 +1314,16 @@ LOAD_PDB:
   if ( restore_kill_flag )
     set_database_flag(DBFL_KILL);
 
+  pdbida_apply_end(pdbida_state, pdbargs.pdb_path.c_str());
   return ok;
 }
 
 //----------------------------------------------------------------------------
 bool idaapi pdb_ctx_t::run(size_t _call_code)
 {
+  bool coff_result;
+  if ( handle_coff_run(*this, _call_code, &coff_result) )
+    return coff_result;
 
   // PDB
   pdbargs_t pdbargs;
@@ -1366,6 +1402,10 @@ void pdb_ctx_t::parse_options(bool *opt_skip)
     {
       opt_provider = PDB_PROVIDER_MSDIA;
     }
+    else if ( parse_pdbida_option(*this, opt) )
+    {
+      // handled by pdbida
+    }
     else
     {
       error("AUTOHIDE NONE\n"
@@ -1373,6 +1413,9 @@ void pdb_ctx_t::parse_options(bool *opt_skip)
             "\n"
             "The valid options are:\n"
             "off     do not load plugin\n"
+#ifdef PDBIDA
+            "pdbida  use PDBIDA provider\n"
+#endif
             "msdia   use MSDIA provider\n");
     }
 
@@ -1401,8 +1444,31 @@ static plugmod_t *idaapi init()
 //--------------------------------------------------------------------------
 ssize_t idaapi pdb_ctx_t::on_event(ssize_t event_id, va_list va)
 {
-  qnotused(event_id);
-  qnotused(va);
+  switch ( event_id )
+  {
+    case processor_t::ev_create_merge_handlers:
+      {
+        merge_data_t *md = va_arg(va, merge_data_t *);
+        create_merge_handlers(*md);
+      }
+      break;
+
+#ifdef CVT64
+    case processor_t::ev_cvt64_supval:
+      {
+        netnode pdbnode = netnode(PDB_NODE_NAME);
+        static const cvt64_node_tag_t node_info[] =
+        {
+          { pdbnode, atag|NETMAP_VAL|CVT64_ZERO_IDX, PDB_DLLBASE_NODE_IDX },
+          { pdbnode, stag|CVT64_ZERO_IDX,            PDB_DLLNAME_NODE_IDX },
+          { pdbnode, atag|NETMAP_VAL,                PDB_LOADING_WIN32_DBG },
+          { pdbnode, atag|NETMAP_VAL,                PDB_TYPESONLY_NODE_IDX },
+        };
+        return cvt64_node_supval_for_event(va, node_info, qnumber(node_info));
+      }
+#endif
+  }
+
   return 0;                     // event is not processed
 }
 
@@ -1456,6 +1522,8 @@ plugin_t PLUGIN =
   // the preferred hotkey to run the plugin
   ""
 };
+
+#include "pdb_pdbida.cpp"
 
 
 //lint -esym(766, md5.h, diskio.hpp) Unused header files.

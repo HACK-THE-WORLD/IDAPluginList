@@ -6,7 +6,7 @@
 #include <idp.hpp>
 #include <idd.hpp>
 #include <typeinf.hpp>
-#include "../../ldr/pe/pe.h"
+#include <ldr/pe/pe.h>
 
 #define PDB_NODE_NAME             "$ pdb"
 #define PDB_DLLBASE_NODE_IDX       0
@@ -44,6 +44,11 @@ struct pdb_signature_t
 };
 
 //----------------------------------------------------------------------------
+#ifndef PDBIDA
+struct pdbargs_extra_t {};  // Reserved
+#endif
+
+//----------------------------------------------------------------------------
 struct pdbargs_t
 {
   qstring pdb_path;     // Path to PDB file.
@@ -52,6 +57,7 @@ struct pdbargs_t
   qstring spath;
   ea_t loaded_base;
   void *user_data;
+  pdbargs_extra_t extra;
   uint32 flags;
 #define PDBFLG_DBG_MODULE  0x0001
 #define PDBFLG_LOAD_TYPES  0x0002
@@ -97,7 +103,14 @@ struct pdb_ctx_t : public plugmod_t, public event_listener_t
   qstring pdb_remote_passwd;
 #define PDB_PROVIDER_MSDIA  1   // use MSDIA local/remote provider
 #define PDB_PROVIDER_PDBIDA 2   // use PDBIDA provider
+#ifdef PDBIDA
+#define PDB_PROVIDER_PDBIDA 2
+  uint pdb_provider = PDB_PROVIDER_PDBIDA;
+  bool pdb_fallback = false;
+#else
   uint pdb_provider = PDB_PROVIDER_MSDIA;
+  bool pdb_fallback = false;
+#endif
 #define PDB_NETWORK_OFF 0   // local directories search only
 #define PDB_NETWORK_PE  1   // local directories search for COFF, full search for PE
 #define PDB_NETWORK_ON  2   // no restrictions
@@ -116,7 +129,7 @@ struct pdb_ctx_t : public plugmod_t, public event_listener_t
   // -1 don't specified
   // 0  set PDB_FALLBACK to false
   // 1  set PDB_FALLBACK to true
-  bool opt_fallback = -1;
+  int opt_fallback = -1;
 
   using namelist_t = std::map<ea_t, qstring>;
   namelist_t namelist;

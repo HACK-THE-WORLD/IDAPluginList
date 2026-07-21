@@ -48,11 +48,11 @@
     <ClCompile Include="Helpers.cpp" />
     <ClCompile Include="Program.cpp" />
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="merge.cpp">
+      <Filter>pdb</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="makefile">
-      <Filter>pdb</Filter>
-    </None>
     <None Include="pdb.cfg" />
   </ItemGroup>
 </Project>

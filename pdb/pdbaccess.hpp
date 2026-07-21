@@ -14,7 +14,7 @@
 #else
 // FIXME: It'd be good if those windows declarations for non-windows
 // systems were somewhere else than in the PE loader.
-#include "../../ldr/pe/mycor.h"
+#include <ldr/pe/mycor.h>
 #endif
 #include "pdb.hpp"
 
@@ -652,6 +652,5 @@ private:
   DWORD global_sym_id;
   DECLARE_UNCOPYABLE(pdb_access_t)
 };
-
 
 #endif // PDBACCESS__H

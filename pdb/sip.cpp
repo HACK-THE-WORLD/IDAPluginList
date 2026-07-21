@@ -81,6 +81,9 @@ struct pdb_modinfo_t
 };
 typedef std::map<ea_t, pdb_modinfo_t> pdb_modules_t;
 
+// forward declaration; defined in pdb_pdbida.cpp
+static bool try_open_pdbida(pdb_modinfo_t &mod, pdbargs_t &args, HRESULT *hr);
+
 //-------------------------------------------------------------------------
 HRESULT pdb_modinfo_t::open(
         const char *input_file,
@@ -93,6 +96,7 @@ HRESULT pdb_modinfo_t::open(
   args.spath = user_spath;
   args.loaded_base = load_address;
   HRESULT hr = E_FAIL;
+  if ( !try_open_pdbida(*this, args, &hr) )
   {
     msg("PDB: using MSDIA provider\n");
     #ifdef ENABLE_REMOTEPDB

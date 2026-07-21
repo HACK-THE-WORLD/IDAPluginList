@@ -3,7 +3,7 @@
 #define PDBREMOTE_HPP
 
 #include <network.hpp>
-#include "../../dbg/win32/win32_rpc.h"
+#include <dbg/win32/win32_rpc.h>
 #include "pdbaccess.hpp"
 
 // The PDB related code that works on Unix
