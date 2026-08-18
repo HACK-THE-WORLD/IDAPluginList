@@ -419,9 +419,14 @@ input[type="submit"]:hover {
             self.send_error(400, f"Unsupported Content-Type: {content_type}")
             return
 
-        # Parse the form data
-        length = int(self.headers.get("content-length", "0"))
-        postvars = parse_qs(self.rfile.read(length).decode("utf-8"))
+        body = self._read_body()
+        if body is None:
+            return
+        try:
+            postvars = parse_qs(body.decode("utf-8"))
+        except UnicodeDecodeError:
+            self.send_error(400, "Invalid form encoding")
+            return
 
         # Update CORS policy
         cors_policy = postvars.get("cors_policy", [DEFAULT_CORS_POLICY])[0]
@@ -441,7 +446,11 @@ input[type="submit"]:hover {
         }
         config_json_set("enabled_tools", enabled_tools)
 
-        # Redirect back to the config page
+        # Redirect back to the config page. No body follows, but under
+        # keep-alive that must be signalled explicitly (Content-Length: 0) -
+        # under the prior HTTP/1.0-only behavior the connection just closed,
+        # which made this ambiguous framing harmless.
         self.send_response(302)
         self.send_header("Location", "/config.html")
+        self.send_header("Content-Length", "0")
         self.end_headers()

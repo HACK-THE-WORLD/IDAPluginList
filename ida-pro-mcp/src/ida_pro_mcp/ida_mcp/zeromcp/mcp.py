@@ -5,7 +5,6 @@ import sys
 import time
 import uuid
 import json
-import gzip
 import zlib
 import ipaddress
 import inspect
@@ -20,6 +19,10 @@ from io import BufferedIOBase
 from .jsonrpc import JsonRpcRegistry, JsonRpcError, JsonRpcException, get_current_request_id, register_pending_request, unregister_pending_request, cancel_request
 
 EXTERNAL_BASE_HEADER = "X-IDA-MCP-External-Base"
+
+_MAX_CHUNK_LINE = 8192
+_MAX_TRAILER_BYTES = 64 * 1024
+_HTTP_TOKEN_BYTES = b"!#$%&'*+-.^_`|~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 logger = logging.getLogger(__name__)
 
@@ -234,10 +237,17 @@ class McpHttpRequestHandler(BaseHTTPRequestHandler):
     server_version = "zeromcp/1.3.0"
     error_message_format = "%(code)d - %(message)s"
     error_content_type = "text/plain"
+    protocol_version = "HTTP/1.1"
+    disable_nagle_algorithm = True
+    timeout = 30
 
     def __init__(self, request, client_address, server):
         self.mcp_server: "McpServer" = getattr(server, "mcp_server")
-        super().__init__(request, client_address, server)
+        self.mcp_server._register_http_connection(request)
+        try:
+            super().__init__(request, client_address, server)
+        finally:
+            self.mcp_server._unregister_http_connection(request)
 
     def _parse_extensions(self, path: str) -> set[str]:
         """Parse ?ext=dbg,foo query param into set of enabled extensions"""
@@ -263,18 +273,31 @@ class McpHttpRequestHandler(BaseHTTPRequestHandler):
                 self.send_header("Access-Control-Allow-Private-Network", "true")
 
     def send_error(self, code, message=None, explain=None):
+        # Under keep-alive, a partially-read (or never-read) request body left
+        # sitting in the socket would be misparsed as the start of the next
+        # request. Always closing on error sidesteps that without having to
+        # prove the body was fully drained at every call site.
+        self.close_connection = True
+        body = f"{message}\n".encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
         self.send_cors_headers()
         self.end_headers()
-        self.wfile.write(f"{message}\n".encode("utf-8"))
+        self.wfile.write(body)
 
     def handle(self):
         """Override to add error handling for connection errors"""
         try:
             super().handle()
-        except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
-            # Client disconnected - normal, suppress traceback
+        except (
+            ConnectionAbortedError,
+            ConnectionResetError,
+            BrokenPipeError,
+            TimeoutError,
+        ):
+            # Client disconnected or left an idle keep-alive connection.
             pass
 
     def _check_api_request(self) -> bool:
@@ -284,8 +307,14 @@ class McpHttpRequestHandler(BaseHTTPRequestHandler):
         because same-origin requests do not need CORS. Rejecting unexpected Host
         and Origin headers closes that gap while keeping direct clients working.
         """
+        host_values = self.headers.get_all("Host", [])
+        host_required = self.request_version not in ("HTTP/0.9", "HTTP/1.0")
+        if len(host_values) > 1 or (host_required and not host_values):
+            self.send_error(400, "Invalid Host")
+            return False
+
         bound_host = self.server.server_address[0]
-        if not _host_header_allowed_for_bind(bound_host, self.headers.get("Host")):
+        if host_values and not _host_header_allowed_for_bind(bound_host, host_values[0]):
             self.send_error(403, "Invalid Host")
             return False
 
@@ -298,8 +327,85 @@ class McpHttpRequestHandler(BaseHTTPRequestHandler):
 
         return True
 
+    def _request_body_framing(self) -> tuple[bool, int] | None:
+        transfer_values = self.headers.get_all("Transfer-Encoding", [])
+        length_values = self.headers.get_all("Content-Length", [])
+
+        if transfer_values and length_values:
+            self.close_connection = True
+            self.send_error(400, "Conflicting request framing")
+            return None
+
+        if transfer_values:
+            encodings = [
+                item.strip().lower()
+                for value in transfer_values
+                for item in value.split(",")
+                if item.strip()
+            ]
+            if encodings != ["chunked"]:
+                self.close_connection = True
+                self.send_error(400, "Unsupported Transfer-Encoding")
+                return None
+            return True, 0
+
+        if len(length_values) > 1:
+            self.close_connection = True
+            self.send_error(400, "Ambiguous Content-Length")
+            return None
+        if not length_values:
+            return False, 0
+
+        length_text = length_values[0].strip(" \t")
+        if not length_text or any(char not in "0123456789" for char in length_text):
+            self.close_connection = True
+            self.send_error(400, "Invalid Content-Length")
+            return None
+
+        normalized_length = length_text.lstrip("0") or "0"
+        limit_text = str(self.mcp_server.post_body_limit)
+        if len(normalized_length) > len(limit_text) or (
+            len(normalized_length) == len(limit_text)
+            and normalized_length > limit_text
+        ):
+            self._send_payload_too_large()
+            return None
+        return False, int(normalized_length)
+
+    def handle_expect_100(self) -> bool:
+        # Reject requests before inviting a body upload. Framing checks are
+        # header-only, so malformed or known-oversized bodies need no transfer.
+        if not self._check_api_request():
+            return False
+        framing = self._request_body_framing()
+        if framing is None:
+            return False
+        chunked, content_length = framing
+        if self.command != "POST" and (chunked or content_length):
+            self.send_error(400, "Request body is not allowed")
+            return False
+        self.send_response_only(100)
+        self.end_headers()
+        return True
+
+    def _has_unexpected_body(self) -> bool:
+        if self.headers.get_all("Transfer-Encoding", []):
+            return True
+        length_values = self.headers.get_all("Content-Length", [])
+        if not length_values:
+            return False
+        if len(length_values) != 1:
+            return True
+        length_text = length_values[0].strip(" \t")
+        if not length_text or any(char not in "0123456789" for char in length_text):
+            return True
+        return any(char != "0" for char in length_text)
+
     def do_GET(self):
         if not self._check_api_request():
+            return
+        if self._has_unexpected_body():
+            self.send_error(400, "Request body is not allowed")
             return
         match urlparse(self.path).path:
             case "/sse":
@@ -328,53 +434,155 @@ class McpHttpRequestHandler(BaseHTTPRequestHandler):
         """Handle CORS preflight requests"""
         if not self._check_api_request():
             return
+        if self._has_unexpected_body():
+            self.send_error(400, "Request body is not allowed")
+            return
         self.send_response(200)
+        self.send_header("Content-Length", "0")
         self.send_cors_headers(preflight=True)
         self.end_headers()
 
+    def _send_payload_too_large(self) -> None:
+        self.close_connection = True
+        self.send_error(413, f"Payload Too Large: exceeds {self.mcp_server.post_body_limit} bytes")
+
     def _read_body(self) -> bytes | None:
-        if "chunked" in self.headers.get("Transfer-Encoding", "").lower():
+        # Revalidate framing even after Expect: 100-continue: callers can invoke
+        # this method directly, and request headers remain the framing authority.
+        framing = self._request_body_framing()
+        if framing is None:
+            return None
+        chunked, content_length = framing
+
+        if chunked:
             raw = self._read_chunked()
-        else:
-            content_length = int(self.headers.get("Content-Length", 0))
-            if content_length > self.mcp_server.post_body_limit:
-                self.send_error(413, f"Payload Too Large: exceeds {self.mcp_server.post_body_limit} bytes")
+            if raw is None:
                 return None
-            raw = self.rfile.read(content_length) if content_length > 0 else b""
+        else:
+            raw = self.rfile.read(content_length) if content_length else b""
+            if len(raw) != content_length:
+                self.close_connection = True
+                self.send_error(400, "Truncated request body")
+                return None
 
         if len(raw) > self.mcp_server.post_body_limit:
-            self.send_error(413, f"Payload Too Large: exceeds {self.mcp_server.post_body_limit} bytes")
+            self._send_payload_too_large()
             return None
 
         return self._decompress_body(raw)
 
-    def _read_chunked(self) -> bytes:
-        body = b""
+    def _readline_bounded(self, limit: int) -> bytes | None:
+        # readline() with no cap would happily buffer an unbounded amount of
+        # memory for a line that never terminates in "\n".
+        line = self.rfile.readline(limit + 1)
+        if len(line) > limit or not line.endswith(b"\n"):
+            self.close_connection = True
+            self.send_error(400, "Malformed chunked encoding")
+            return None
+        return line
+
+    def _read_chunked(self) -> bytes | None:
+        chunks: list[bytes] = []
+        total = 0
         limit = self.mcp_server.post_body_limit
         while True:
-            line = self.rfile.readline().split(b";")[0].strip()
-            chunk_size = int(line, 16)
+            line = self._readline_bounded(_MAX_CHUNK_LINE)
+            if line is None:
+                return None
+            size_text = line.split(b";", 1)[0].strip()
+            if not size_text or any(byte not in b"0123456789abcdefABCDEF" for byte in size_text):
+                self.close_connection = True
+                self.send_error(400, "Malformed chunked encoding")
+                return None
+            chunk_size = int(size_text, 16)
             if chunk_size == 0:
-                # Consume trailer fields until blank line
-                while self.rfile.readline().strip():
-                    pass
-                break
-            body += self.rfile.read(min(chunk_size, limit + 1 - len(body)))
-            if len(body) > limit:
-                return body
-            self.rfile.readline()
-        return body
+                trailer_bytes = 0
+                while True:
+                    trailer = self._readline_bounded(_MAX_CHUNK_LINE)
+                    if trailer is None:
+                        return None
+                    trailer_bytes += len(trailer)
+                    if trailer_bytes > _MAX_TRAILER_BYTES:
+                        self.close_connection = True
+                        self.send_error(400, "Chunk trailers too large")
+                        return None
+                    if trailer in (b"\r\n", b"\n"):
+                        return b"".join(chunks)
+                    field_line = trailer[:-2] if trailer.endswith(b"\r\n") else trailer[:-1]
+                    name, separator, _ = field_line.partition(b":")
+                    if (
+                        not separator
+                        or not name
+                        or any(byte not in _HTTP_TOKEN_BYTES for byte in name)
+                    ):
+                        self.close_connection = True
+                        self.send_error(400, "Malformed chunk trailer")
+                        return None
 
-    def _decompress_body(self, data: bytes) -> bytes:
+            if total + chunk_size > limit:
+                self._send_payload_too_large()
+                return None
+
+            chunk = self.rfile.read(chunk_size)
+            if len(chunk) != chunk_size or self.rfile.read(2) != b"\r\n":
+                self.close_connection = True
+                self.send_error(400, "Malformed chunked encoding")
+                return None
+            chunks.append(chunk)
+            total += chunk_size
+
+    def _decompress_member(self, data: bytes, wbits: int) -> bytes | None:
+        output = bytearray()
+        remaining_input = data
+        while remaining_input:
+            decompressor = zlib.decompressobj(wbits)
+            pending = remaining_input
+            while pending:
+                budget = self.mcp_server.post_body_limit - len(output)
+                part = decompressor.decompress(pending, budget + 1)
+                if len(part) > budget:
+                    self._send_payload_too_large()
+                    return None
+                output.extend(part)
+                pending = decompressor.unconsumed_tail
+            if not decompressor.eof:
+                self.close_connection = True
+                self.send_error(400, "Invalid compressed request body")
+                return None
+            budget = self.mcp_server.post_body_limit - len(output)
+            tail = decompressor.flush(budget + 1)
+            if len(tail) > budget:
+                self._send_payload_too_large()
+                return None
+            output.extend(tail)
+            remaining_input = decompressor.unused_data
+            if wbits != 16 + zlib.MAX_WBITS and remaining_input:
+                self.close_connection = True
+                self.send_error(400, "Trailing compressed request data")
+                return None
+        return bytes(output)
+
+    def _decompress_body(self, data: bytes) -> bytes | None:
         encoding = self.headers.get("Content-Encoding", "").lower().strip()
-        if encoding in ("gzip", "x-gzip"):
-            return gzip.decompress(data)
-        elif encoding == "deflate":
-            if data[:1] == b'\x78':
-                return zlib.decompress(data)
-            else:
-                return zlib.decompress(data, -15)
-        return data
+        try:
+            if encoding in ("", "identity"):
+                return data
+            if encoding in ("gzip", "x-gzip", "deflate") and not data:
+                self.close_connection = True
+                self.send_error(400, "Invalid compressed request body")
+                return None
+            if encoding in ("gzip", "x-gzip"):
+                return self._decompress_member(data, 16 + zlib.MAX_WBITS)
+            if encoding == "deflate":
+                wbits = zlib.MAX_WBITS if data[:1] == b"\x78" else -zlib.MAX_WBITS
+                return self._decompress_member(data, wbits)
+        except zlib.error:
+            self.close_connection = True
+            self.send_error(400, "Invalid compressed request body")
+            return None
+        self.close_connection = True
+        self.send_error(415, "Unsupported Content-Encoding")
+        return None
 
     def _handle_sse_get(self):
         # Create SSE connection wrapper
@@ -383,10 +591,11 @@ class McpHttpRequestHandler(BaseHTTPRequestHandler):
 
         try:
             # Send SSE headers
+            self.close_connection = True
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
-            self.send_header("Connection", "keep-alive")
+            self.send_header("Connection", "close")
             self.send_cors_headers()
             self.end_headers()
 
@@ -566,6 +775,8 @@ class McpServer:
         self._sse_connections: dict[str, _McpSseConnection] = {}
         self._http_sessions: dict[str, float] = {}
         self._http_sessions_lock = threading.Lock()
+        self._http_connections: set[socket.socket] = set()
+        self._http_connections_lock = threading.Lock()
         self.http_session_ttl_sec = 24 * 60 * 60
         self.http_session_max_count = 4096
         self._protocol_version = threading.local()
@@ -587,6 +798,29 @@ class McpServer:
         self.registry.methods["prompts/get"] = self._mcp_prompts_get
         self.registry.methods["notifications/initialized"] = self._mcp_notifications_initialized
         self.registry.methods["notifications/cancelled"] = self._mcp_notifications_cancelled
+
+    def _register_http_connection(self, connection: socket.socket) -> None:
+        with self._http_connections_lock:
+            if self._running:
+                self._http_connections.add(connection)
+                return
+        try:
+            connection.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+
+    def _unregister_http_connection(self, connection: socket.socket) -> None:
+        with self._http_connections_lock:
+            self._http_connections.discard(connection)
+
+    def _shutdown_http_connections(self) -> None:
+        with self._http_connections_lock:
+            connections = tuple(self._http_connections)
+        for connection in connections:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
 
     def tool(self, func: Callable) -> Callable:
         return self.tools.method(func)
@@ -670,7 +904,7 @@ class McpServer:
             serve_forever()
 
     def stop(self):
-        if not self._running:
+        if not self._running and self._http_server is None:
             return
 
         self._running = False
@@ -679,6 +913,7 @@ class McpServer:
         for conn in self._sse_connections.values():
             conn.alive = False
         self._sse_connections.clear()
+        self._shutdown_http_connections()
 
         # Shutdown the HTTP server
         if self._http_server:

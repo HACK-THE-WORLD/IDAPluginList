@@ -1,10 +1,15 @@
 """End-to-end tests over a real localhost HTTP socket."""
+import gzip
+import http.client
+import json
+import socket
 
 import sys
 import pathlib
 import time
 import unittest
 from typing import Annotated, TypedDict
+import threading
 
 from jsonschema import Draft202012Validator
 
@@ -63,6 +68,20 @@ def _make_server() -> McpServer:
         return f"hello {name}"
 
     return srv
+
+def _raw_status(host: str, port: int, request: bytes) -> int:
+    connection = socket.create_connection((host, port), timeout=2)
+    try:
+        connection.sendall(request)
+        response = b""
+        while b"\r\n\r\n" not in response:
+            chunk = connection.recv(4096)
+            if not chunk:
+                break
+            response += chunk
+        return int(response.split(b" ", 2)[1])
+    finally:
+        connection.close()
 
 
 class HttpE2EBootstrapTests(unittest.TestCase):
@@ -243,6 +262,141 @@ class HttpSessionManagementTests(unittest.TestCase):
         if session_id is not None:
             self.assertGreater(len(session_id), 0)
 
+
+class Http11TransportTests(unittest.TestCase):
+    def test_rejects_missing_and_duplicate_host(self):
+        with McpHttpTestServer(_make_server()) as harness:
+            body = json.dumps({"jsonrpc": "2.0", "method": "ping", "id": 1}).encode()
+            suffix = (
+                f"Content-Type: application/json\r\nContent-Length: {len(body)}\r\n\r\n"
+            ).encode() + body
+            self.assertEqual(
+                _raw_status(
+                    harness.host,
+                    harness.port,
+                    b"POST /mcp HTTP/1.1\r\n" + suffix,
+                ),
+                400,
+            )
+            self.assertEqual(
+                _raw_status(
+                    harness.host,
+                    harness.port,
+                    (
+                        f"POST /mcp HTTP/1.1\r\nHost: {harness.host}:{harness.port}\r\n"
+                        "Host: evil.example\r\n"
+                    ).encode()
+                    + suffix,
+                ),
+                400,
+            )
+
+            self.assertEqual(
+                _raw_status(
+                    harness.host,
+                    harness.port,
+                    b"POST /mcp HTTP/1.0\r\n" + suffix,
+                ),
+                200,
+            )
+
+    def test_rejects_non_decimal_content_length(self):
+        with McpHttpTestServer(_make_server()) as harness:
+            body = b"abcde"
+            for value in ("+5", "-0"):
+                request = (
+                    f"POST /mcp HTTP/1.1\r\nHost: {harness.host}:{harness.port}\r\n"
+                    f"Content-Length: {value}\r\n\r\n"
+                ).encode() + body
+                self.assertEqual(_raw_status(harness.host, harness.port, request), 400)
+
+    def test_expect_rejects_invalid_framing_without_continue(self):
+        server = _make_server()
+        server.post_body_limit = 100
+        with McpHttpTestServer(server) as harness:
+            requests = (
+                (
+                    f"POST /mcp HTTP/1.1\r\nHost: {harness.host}:{harness.port}\r\n"
+                    "Content-Length: 101\r\nExpect: 100-continue\r\n\r\n"
+                ).encode(),
+                (
+                    f"POST /mcp HTTP/1.1\r\nHost: {harness.host}:{harness.port}\r\n"
+                    "Content-Length: 2\r\nTransfer-Encoding: chunked\r\n"
+                    "Expect: 100-continue\r\n\r\n"
+                ).encode(),
+            )
+            self.assertEqual(_raw_status(harness.host, harness.port, requests[0]), 413)
+            self.assertEqual(_raw_status(harness.host, harness.port, requests[1]), 400)
+
+    def test_rejects_malformed_chunk_trailer(self):
+        with McpHttpTestServer(_make_server()) as harness:
+            body = json.dumps({"jsonrpc": "2.0", "method": "ping", "id": 1}).encode()
+            request = (
+                f"POST /mcp HTTP/1.1\r\nHost: {harness.host}:{harness.port}\r\n"
+                "Content-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n"
+            ).encode()
+            request += f"{len(body):X}\r\n".encode() + body + b"\r\n0\r\n \r\n\r\n"
+            self.assertEqual(_raw_status(harness.host, harness.port, request), 400)
+
+    def test_compressed_body_limit_and_malformed_stream(self):
+        server = _make_server()
+        server.post_body_limit = 100
+        with McpHttpTestServer(server) as harness:
+            connection = http.client.HTTPConnection(harness.host, harness.port, timeout=2)
+            try:
+                connection.request(
+                    "POST",
+                    "/mcp",
+                    body=gzip.compress(b"x" * 101),
+                    headers={"Content-Encoding": "gzip"},
+                )
+                response = connection.getresponse()
+                self.assertEqual(response.status, 413)
+                response.read()
+            finally:
+                connection.close()
+
+            connection = http.client.HTTPConnection(harness.host, harness.port, timeout=2)
+            try:
+                connection.request(
+                    "POST",
+                    "/mcp",
+                    body=b"not gzip",
+                    headers={"Content-Encoding": "gzip"},
+                )
+                response = connection.getresponse()
+                self.assertEqual(response.status, 400)
+                response.read()
+            finally:
+                connection.close()
+
+    def test_single_threaded_stop_closes_idle_keepalive_connection(self):
+        server = _make_server()
+        server.serve("127.0.0.1", 0, background=True, threaded=False)
+        port = server._http_server.server_address[1]
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+        body = json.dumps({"jsonrpc": "2.0", "method": "ping", "id": 1}).encode()
+        try:
+            connection.request(
+                "POST",
+                "/mcp",
+                body=body,
+                headers={"Content-Type": "application/json"},
+            )
+            response = connection.getresponse()
+            self.assertEqual(response.status, 200)
+            response.read()
+
+            stopper = threading.Thread(target=server.stop)
+            stopper.start()
+            stopper.join(timeout=2)
+            stopped_while_connection_open = not stopper.is_alive()
+            connection.close()
+            stopper.join(timeout=2)
+            self.assertTrue(stopped_while_connection_open)
+        finally:
+            connection.close()
+            server.stop()
 
 if __name__ == "__main__":
     unittest.main()
