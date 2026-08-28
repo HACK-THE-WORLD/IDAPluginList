@@ -262,6 +262,32 @@ class HttpSessionManagementTests(unittest.TestCase):
         if session_id is not None:
             self.assertGreater(len(session_id), 0)
 
+    def test_notification_response_is_bodyless(self):
+        payload = json.dumps(
+            {"jsonrpc": "2.0", "method": "notifications/initialized"}
+        ).encode("utf-8")
+        connection = http.client.HTTPConnection(
+            self.harness.host, self.harness.port, timeout=2
+        )
+        try:
+            connection.request(
+                "POST",
+                "/mcp",
+                body=payload,
+                headers={
+                    "Accept": "application/json, text/event-stream",
+                    "Content-Type": "application/json",
+                },
+            )
+            response = connection.getresponse()
+            body = response.read()
+        finally:
+            connection.close()
+
+        self.assertEqual(response.status, 202)
+        self.assertEqual(response.getheader("Content-Length"), "0")
+        self.assertEqual(body, b"")
+
 
 class Http11TransportTests(unittest.TestCase):
     def test_rejects_missing_and_duplicate_host(self):

@@ -755,7 +755,7 @@ class McpHttpRequestHandler(BaseHTTPRequestHandler):
 
         # Check if notification (returns None)
         if response is None:
-            send_response(202, b"Accepted")
+            send_response(202, b"")
         else:
             send_response(200, json.dumps(response).encode("utf-8"))
 
