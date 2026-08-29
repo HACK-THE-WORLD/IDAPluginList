@@ -250,6 +250,13 @@ Worker controls:
 - `--max-workers N`: maximum simultaneous database workers (`0` = unlimited, default `4`).
 - `IDA_MCP_MAX_WORKERS`: environment default for `--max-workers`.
 
+The bundled Codex plugin forwards the runtime's `IDA_MCP_*` configuration variables from the Codex host environment:
+
+- Capacity and lifecycle: `IDA_MCP_MAX_WORKERS`, `IDA_MCP_OPEN_TIMEOUT`, `IDA_MCP_WEDGED_GRACE_SEC`, `IDA_MCP_WORKER_CALL_TIMEOUT`.
+- Health probes: `IDA_MCP_HEALTH_TCP_TIMEOUT`, `IDA_MCP_HEALTH_RPC_TIMEOUT`, `IDA_MCP_HEALTH_RETRIES`, `IDA_MCP_HEALTH_RETRY_BACKOFF`.
+- Worker behavior: `IDA_MCP_TOOL_TIMEOUT_SEC`, `IDA_MCP_ANALYSIS_PROMPT`, `IDA_MCP_URL`.
+- Request logging: `IDA_MCP_LOG_REQUESTS`, `IDA_MCP_LOG_SKIP_METHODS`.
+
 
 ## MCP Resources
 

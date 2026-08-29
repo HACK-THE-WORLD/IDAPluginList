@@ -7,7 +7,22 @@
         "idalib-mcp",
         "--stdio"
       ],
-      "cwd": "."
+      "cwd": ".",
+      "env_vars": [
+        "IDA_MCP_ANALYSIS_PROMPT",
+        "IDA_MCP_HEALTH_RETRIES",
+        "IDA_MCP_HEALTH_RETRY_BACKOFF",
+        "IDA_MCP_HEALTH_RPC_TIMEOUT",
+        "IDA_MCP_HEALTH_TCP_TIMEOUT",
+        "IDA_MCP_LOG_REQUESTS",
+        "IDA_MCP_LOG_SKIP_METHODS",
+        "IDA_MCP_MAX_WORKERS",
+        "IDA_MCP_OPEN_TIMEOUT",
+        "IDA_MCP_TOOL_TIMEOUT_SEC",
+        "IDA_MCP_URL",
+        "IDA_MCP_WEDGED_GRACE_SEC",
+        "IDA_MCP_WORKER_CALL_TIMEOUT"
+      ]
     }
   }
 }
