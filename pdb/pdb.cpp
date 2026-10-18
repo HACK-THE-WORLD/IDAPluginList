@@ -637,6 +637,33 @@ bool pdb_til_builder_t::handle_symbol_at_ea(
         if ( use_ti )
         {
           type_created(ea, 0, nullptr, tpi.type);
+          if ( !tpi.type.is_func() )
+          {
+            // a smaller head item (made when code refs the symbol) blocks
+            // layout; clear it so the type can materialize. but keep a real
+            // character-array string: del_items would explode it into its
+            // individual units. covers narrow (char[N]) and wide
+            // (wchar_t[N]/unsigned short[N]) strings whose unit width
+            // matches the laid-out string.
+            flags64_t fl = get_flags32(ea);
+            asize_t nbytes = tpi.type.get_size();
+            bool keep_string = false;
+            if ( is_strlit(fl) && tpi.type.is_array() )
+            {
+              tinfo_t el = tpi.type.get_array_element();
+              switch ( get_strtype_bpu(get_str_type(ea)) )
+              {
+                case BPU_1B: keep_string = el.is_char() || el.is_uchar(); break;
+                case BPU_2B: keep_string = el.get_size() == 2;            break;
+              }
+            }
+            if ( nbytes != BADSIZE && nbytes > 0
+              && !is_code(fl) && !keep_string
+              && get_item_size(ea) < nbytes )
+            {
+              del_items(ea, DELIT_SIMPLE, nbytes);
+            }
+          }
           apply_tinfo(ea, tpi.type, TINFO_STRICT);
         }
       }

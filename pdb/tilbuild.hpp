@@ -140,15 +140,19 @@ public:
   cvt_code_t verify_struct(pdb_udt_type_data_t &udt) const;
   bool verify_union_stem(pdb_udt_type_data_t &udt) const;
   cvt_code_t fix_bit_union(pdb_udt_type_data_t *udt) const;
+  // BF_BITS are the TAUDT_INVBF bit of the enclosing udt: the sub-udts
+  // created for its bitfield groups allocate in the same order
   cvt_code_t verify_union(
         pdb_udt_type_data_t *out,
         pdb_udt_type_data_t::iterator p1,
-        pdb_udt_type_data_t::const_iterator p2) const;
+        pdb_udt_type_data_t::const_iterator p2,
+        uint32 bf_bits) const;
   cvt_code_t create_union(
         tinfo_t *out,
         size_t *p_total_size,
         pdb_udt_type_data_t::iterator p1,
-        pdb_udt_type_data_t::const_iterator p2) const;
+        pdb_udt_type_data_t::const_iterator p2,
+        uint32 bf_bits) const;
   cvt_code_t convert_basetype(tpinfo_t *out, DWORD baseType, int size) const;
   cvt_code_t make_vtable_struct(tinfo_t *out, pdb_sym_t &sym);
   cvt_code_t convert_udt(tinfo_t *out, pdb_sym_t &sym, DWORD64 size);

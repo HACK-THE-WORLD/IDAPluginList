@@ -791,7 +791,8 @@ bool til_builder_t::verify_union_stem(pdb_udt_type_data_t &udt) const
 cvt_code_t til_builder_t::verify_union(
         pdb_udt_type_data_t *out,
         pdb_udt_type_data_t::iterator p1,
-        pdb_udt_type_data_t::const_iterator p2) const
+        pdb_udt_type_data_t::const_iterator p2,
+        uint32 bf_bits) const
 {
   if ( p1 == p2 )
     return cvt_ok;
@@ -866,6 +867,7 @@ cvt_code_t til_builder_t::verify_union(
       return cvt_failed;
     tinfo_t tif;
     int total_size = s->total_size;
+    s->taudt_bits |= bf_bits;
     cvt_code_t code = create_udt_ref(&tif, s, UdtStruct);
     if ( code != cvt_ok )
       return code;
@@ -895,7 +897,8 @@ cvt_code_t til_builder_t::create_union(
         tinfo_t *out,
         size_t *p_total_size,
         pdb_udt_type_data_t::iterator p1,
-        pdb_udt_type_data_t::const_iterator p2) const
+        pdb_udt_type_data_t::const_iterator p2,
+        uint32 bf_bits) const
 {
 #ifdef PDEB
   msg("CREATE UNION\n");
@@ -903,7 +906,8 @@ cvt_code_t til_builder_t::create_union(
     msg("  %" FMT_64 "x %s %s bit_offset %u\n", p->offset, p->type.dstr(), p->name.c_str(), p->bit_offset);
 #endif
   pdb_udt_type_data_t unimems;
-  cvt_code_t code = verify_union(&unimems, p1, p2);
+  unimems.taudt_bits |= bf_bits;
+  cvt_code_t code = verify_union(&unimems, p1, p2, bf_bits);
   if ( code != cvt_ok )
     return code;
   // calculate the total size
@@ -1259,6 +1263,117 @@ void til_builder_t::fix_thisarg_type(const qstring &udt_name)
 }
 
 //----------------------------------------------------------------------
+//----------------------------------------------------------------------
+// Storage unit of a bitfield member, in bits from the start of the udt.
+// Both UDM.offset and UDM.bit_offset count from the same end of the unit,
+// so the difference is the start of the unit in either order.
+inline uint64 bf_unit_start(const pdb_udm_t &udm)
+{
+  return udm.offset - udm.bit_offset;
+}
+
+//----------------------------------------------------------------------
+inline bool has_bitfields(const pdb_udt_type_data_t &udt)
+{
+  for ( const pdb_udm_t &udm : udt )
+    if ( udm.type.is_bitfield() )
+      return true;
+  return false;
+}
+
+//----------------------------------------------------------------------
+// Recover the bitfield allocation order of a codeview udt.
+// LF_BITFIELD stores the bit position counted from the least significant bit
+// of the storage unit, whatever the order the compiler allocated in, and the
+// field list is in declaration order, so the order shows in the direction the
+// positions of one unit move: up for lsb_to_msb, down for msb_to_lsb.
+// A unit holding one recorded member is weaker evidence, because an unnamed
+// bitfield does not reach the field list at all: the padding of
+// `unsigned Width:24; unsigned :8;` is invisible, and so is the padding of
+// `unsigned :8; unsigned b:24;`, which leaves the two indistinguishable.
+// Read such a unit as lsb_to_msb when its member starts at bit 0, the shape
+// of a field declared first with the padding after it. The mirror shape (a
+// member ending at the top of the unit) is not used: it would be msb_to_lsb,
+// which is the default of the only compiler that has the pragma anyway, and
+// reading it that way on a little-endian target - where the compiler always
+// allocates from the lsb - would invert a struct that was never in question.
+// Returns BFO_DEFAULT if the udt has no bitfields or gives no evidence.
+static bf_order_t detect_bf_order(const pdb_udt_type_data_t &udt)
+{
+  bool saw_lsb = false;
+  bool saw_msb = false;
+  bool saw_lone_at_lsb = false;
+  size_t n = udt.size();
+  for ( size_t i = 0; i < n; )
+  {
+    bitfield_type_data_t bi;
+    if ( !udt[i].type.is_bitfield() || !udt[i].type.get_bitfield_details(&bi) )
+    {
+      ++i;
+      continue;
+    }
+    // the members the compiler packed into one unit are declared together
+    uint64 unit = bf_unit_start(udt[i]);
+    size_t j = i + 1;
+    for ( ; j < n; ++j )
+    {
+      bitfield_type_data_t bj;
+      if ( !udt[j].type.is_bitfield()
+        || !udt[j].type.get_bitfield_details(&bj)
+        || bj.nbytes != bi.nbytes
+        || bf_unit_start(udt[j]) != unit )
+      {
+        break;
+      }
+    }
+    if ( j > i + 1 )
+    { // the unit holds several members: they moved one way or the other
+      for ( size_t k = i; k + 1 < j; ++k )
+      {
+        if ( udt[k+1].bit_offset > udt[k].bit_offset )
+          saw_lsb = true;
+        else if ( udt[k+1].bit_offset < udt[k].bit_offset )
+          saw_msb = true;
+        else if ( udt[k+1].size != udt[k].size )
+          saw_lsb = true;   // alternatives of a union of bare bitfields. Only
+                            // lsb_to_msb starts two widths at the same bit:
+                            // allocating from the top would put the wider one
+                            // lower, the shape the branches above catch
+      }
+    }
+    else if ( udt[i].bit_offset == 0 && udt[i].size < uint64(bi.nbytes) * 8 )
+    {
+      saw_lone_at_lsb = true;
+    }
+    i = j;
+  }
+  if ( saw_msb != saw_lsb )
+    return saw_msb ? BFO_MSB_TO_LSB : BFO_LSB_TO_MSB;
+  if ( saw_msb )             // a udt that mixes both: no order describes it
+    return BFO_DEFAULT;
+  return saw_lone_at_lsb ? BFO_LSB_TO_MSB : BFO_DEFAULT;
+}
+
+//----------------------------------------------------------------------
+// Turn codeview bit positions into positions counted from the most
+// significant bit of the storage unit, the order the members were allocated in
+static void reverse_bf_offsets(pdb_udt_type_data_t *udt)
+{
+  for ( pdb_udm_t &udm : *udt )
+  {
+    bitfield_type_data_t bi;
+    if ( !udm.type.is_bitfield() || !udm.type.get_bitfield_details(&bi) )
+      continue;
+    uint64 nbits = uint64(bi.nbytes) * 8;
+    if ( udm.bit_offset + udm.size > nbits )
+      continue;
+    uint64 start = bf_unit_start(udm);
+    udm.bit_offset = nbits - udm.bit_offset - udm.size;
+    udm.offset = start + udm.bit_offset;
+  }
+}
+
+//----------------------------------------------------------------------
 cvt_code_t til_builder_t::convert_udt(
         tinfo_t *out,
         pdb_sym_t &_sym,
@@ -1459,6 +1574,16 @@ cvt_code_t til_builder_t::convert_udt(
           collect_vft ? &vtinfo : nullptr);
   pdb_access->iterate_children(_sym, SymTagNull, pp);
 
+  // an order the udt itself does not show is the compiler default, which is
+  // what the database is set to
+  bf_order_t bf_order = detect_bf_order(udt);
+  if ( bf_order == BFO_DEFAULT )
+    bf_order = inf_get_bf_order();
+  if ( bf_order == BFO_MSB_TO_LSB )
+    reverse_bf_offsets(&udt);
+  if ( bf_order != inf_get_bf_order() )
+    udt.taudt_bits |= TAUDT_INVBF;
+
   bool is_cppobj = false;
   if ( collect_vft && !vtinfo.udt.empty() )
   {
@@ -1572,6 +1697,9 @@ static void fill_vft_empty_splots(udt_type_data_t *udt)
 //----------------------------------------------------------------------
 void til_builder_t::create_vftables()
 {
+  if ( vftmap.empty() )
+    return;
+  show_wait_box("Creating virtual function tables ...");
   int counter = 0;
   while ( !vftmap.empty() )
   {
@@ -1655,6 +1783,7 @@ void til_builder_t::create_vftables()
     }
     vftmap.clear();
   }
+  hide_wait_box();
 }
 
 //----------------------------------------------------------------------
@@ -1737,7 +1866,7 @@ cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int
   {
     udt->is_union = true;
     fix_bit_union(udt);
-    code = verify_union(udt, udt->begin(), udt->end());
+    code = verify_union(udt, udt->begin(), udt->end(), udt->taudt_bits & TAUDT_INVBF);
   }
   else
   {
@@ -1747,6 +1876,12 @@ cvt_code_t til_builder_t::create_udt(tinfo_t *out, pdb_udt_type_data_t *udt, int
   }
   if ( code != cvt_ok )
     return code;
+
+  // The flag belongs to the udt that declares the bitfields, and it had to be
+  // set before the split so the sub-structures could inherit it. A union whose
+  // bitfields all moved into one of them holds none of its own any more.
+  if ( (udt->taudt_bits & TAUDT_INVBF) != 0 && !has_bitfields(*udt) )
+    udt->taudt_bits &= ~TAUDT_INVBF;
 
   // validate the type sizes, for the following reasons:
   //   - pdb information may be misleading (see pc_pdb_redefined_type.pe)
@@ -2419,7 +2554,8 @@ cvt_code_t til_builder_t::handle_overlapping_members(pdb_udt_type_data_t *udt) c
       // range [first, p) is overlapping, create a new type for it
       tinfo_t unitif;
       size_t union_size;
-      cvt_code_t code = create_union(&unitif, &union_size, first, p);
+      cvt_code_t code = create_union(&unitif, &union_size, first, p,
+                                     udt->taudt_bits & TAUDT_INVBF);
       if ( code != cvt_ok )
         return code;
       udt->erase(first+1, p);
@@ -2922,9 +3058,7 @@ HRESULT til_builder_t::build(pdb_sym_t &global_sym)
   }
   if ( hr == S_OK )
   {
-    show_wait_box("Creating virtual function tables ...");
     create_vftables();
-    hide_wait_box();
     if ( user_cancelled() )
       return E_ABORT;
 
