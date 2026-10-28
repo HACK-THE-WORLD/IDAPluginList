@@ -12,9 +12,7 @@
 #include <oaidl.h>
 #include "dia2.h"
 #else
-// FIXME: It'd be good if those windows declarations for non-windows
-// systems were somewhere else than in the PE loader.
-#include <ldr/pe/mycor.h>
+#include <ldr/pe/wintypes.h>
 #endif
 #include "pdb.hpp"
 
@@ -48,56 +46,57 @@ enum sym_token_t
   t_hasCastOperator           = 1 << 6,
   t_function                  = 1 << 7, // FIXME!
   t_constructor               = 1 << 8,
-  t_isVirtualBaseClass        = 1 << 9,
-  t_bool_end                  = t_isVirtualBaseClass,
+  t_virtualBaseClass          = 1 << 9,
+  t_isCxxReturnUdt            = 1 << 10,
+  t_bool_end                  = t_isCxxReturnUdt,
 
   // dword
-  t_dword_start               = 1 << 10,
+  t_dword_start               = 1 << 11,
   t_backEndMajor              = t_dword_start,
-  t_baseType                  = 1 << 11,
-  t_bitPosition               = 1 << 12,
-  t_callingConvention         = 1 << 13,
-  t_count                     = 1 << 14,
-  t_dataKind                  = 1 << 15,
-  t_locationType              = 1 << 16,
-  t_registerId                = 1 << 17,
-  t_relativeVirtualAddress    = 1 << 18,
-  t_symIndexId                = 1 << 19,
-  t_symTag                    = 1 << 20,
-  t_udtKind                   = 1 << 21,
-  t_virtualBaseOffset         = 1 << 22,
-  t_machineType               = 1 << 23,
-  t_classParentId             = 1 << 24,
-  t_typeId                    = 1 << 25,
-  t_lexicalParentId           = 1 << 26,
+  t_baseType                  = 1 << 12,
+  t_bitPosition               = 1 << 13,
+  t_callingConvention         = 1 << 14,
+  t_count                     = 1 << 15,
+  t_dataKind                  = 1 << 16,
+  t_locationType              = 1 << 17,
+  t_registerId                = 1 << 18,
+  t_relativeVirtualAddress    = 1 << 19,
+  t_symIndexId                = 1 << 20,
+  t_symTag                    = 1 << 21,
+  t_udtKind                   = 1 << 22,
+  t_virtualBaseOffset         = 1 << 23,
+  t_machineType               = 1 << 24,
+  t_classParentId             = 1 << 25,
+  t_typeId                    = 1 << 26,
+  t_lexicalParentId           = 1 << 27,
   t_dword_end                 = t_lexicalParentId,
 
   // dword64
-  t_dword64_start             = 1 << 27,
+  t_dword64_start             = 1 << 28,
   t_length                    = t_dword64_start,
   t_dword64_end               = t_length,
 
   // string
-  t_string_start              = 1 << 28,
+  t_string_start              = 1 << 29,
   t_name                      = t_string_start,
   t_string_end                = t_name,
 
   // long
-  t_long_start                = 1 << 29,
+  t_long_start                = 1 << 30,
   t_offset                    = t_long_start,
   t_long_end                  = t_offset,
 
   // ulonglong
-  t_ulonglong_start           = 1 << 30,
+  t_ulonglong_start           = 1ULL << 31,
   t_virtualAddress            = t_ulonglong_start,
   t_ulonglong_end             = t_virtualAddress,
 
   // variant
-  t_variant_start             = 1ULL << 31,
+  t_variant_start             = 1ULL << 32,
   t_value                     = t_variant_start,
   t_variant_end               = t_value,
 
-  t_end                       = 1ULL << 32,
+  t_end                       = 1ULL << 33,
 };
 CASSERT(sizeof(sym_token_t) == 8);
 
@@ -139,6 +138,7 @@ struct pdb_sym_t
   virtual HRESULT get_function(BOOL *out) = 0;
   virtual HRESULT get_hasAssignmentOperator(BOOL *out) = 0;
   virtual HRESULT get_hasCastOperator(BOOL *out) = 0;
+  virtual HRESULT get_isCxxReturnUdt(BOOL *out) = 0;
   virtual HRESULT get_isStatic(BOOL *out) = 0;
   virtual HRESULT get_length(DWORD64 *out) = 0;
   virtual HRESULT get_lexicalParent(pdb_sym_t *out) = 0;
@@ -339,6 +339,7 @@ struct dia_pdb_sym_t : public pdb_sym_t
   HRESULT get_function(BOOL *out)                 { return data->get_function(out); }
   HRESULT get_hasAssignmentOperator(BOOL *out)    { return data->get_hasAssignmentOperator(out); }
   HRESULT get_hasCastOperator(BOOL *out)          { return data->get_hasCastOperator(out); }
+  HRESULT get_isCxxReturnUdt(BOOL *out)           { return data->get_isCxxReturnUdt(out); }
   HRESULT get_isStatic(BOOL *out)                 { return data->get_isStatic(out); }
   HRESULT get_length(DWORD64 *out)                { return data->get_length(out); }
   HRESULT get_lexicalParent(pdb_sym_t *out)
@@ -443,13 +444,14 @@ struct remote_pdb_sym_t : public pdb_sym_t
   HRESULT get_callingConvention(DWORD *out) override      { return data->get_dword(t_callingConvention, out); }
   HRESULT get_code(BOOL *out) override                    { return data->get_bool(t_code, out); }
   HRESULT get_constructor(BOOL *out) override             { return data->get_bool(t_constructor, out); }
-  HRESULT get_isVirtualBaseClass(BOOL *out) override      { return data->get_bool(t_isVirtualBaseClass, out); }
+  HRESULT get_isVirtualBaseClass(BOOL *out) override      { return data->get_bool(t_virtualBaseClass, out); }
   HRESULT get_constType(BOOL *out) override               { return data->get_bool(t_constType, out); }
   HRESULT get_count(DWORD *out) override                  { return data->get_dword(t_count, out); }
   HRESULT get_dataKind(DWORD *out) override               { return data->get_dword(t_dataKind, out); }
   HRESULT get_function(BOOL *out) override                { return data->get_bool(t_function, out); }
   HRESULT get_hasAssignmentOperator(BOOL *out) override   { return data->get_bool(t_hasAssignmentOperator, out); }
   HRESULT get_hasCastOperator(BOOL *out) override         { return data->get_bool(t_hasCastOperator, out); }
+  HRESULT get_isCxxReturnUdt(BOOL *out) override          { return data->get_bool(t_isCxxReturnUdt, out); }
   HRESULT get_isStatic(BOOL *out) override                { return data->get_bool(t_isStatic, out); }
   HRESULT get_length(DWORD64 *out) override               { return data->get_dword64(t_length, out); }
   HRESULT get_lexicalParent(pdb_sym_t *out) override;

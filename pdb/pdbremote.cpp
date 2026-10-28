@@ -281,8 +281,7 @@ const void *sym_data_t::any_ptr(sym_token_t token, sym_token_t start, sym_token_
   QASSERT(30204, type_size != 0);
 
   // how many tokens of our type we have to skip?
-  uint32 bit;
-  for ( bit = start; bit <= end; bit <<= 1 )
+  for ( uint64 bit = start; bit <= end; bit <<= 1 )
   {
     sym_token_t t = sym_token_t(bit);
     if ( token_present(t) )

@@ -1995,11 +1995,18 @@ bool til_builder_t::is_complex_return(pdb_sym_t &sym) const
     if ( !complex && tag == SymTagUDT )
     {
       // we've got a small UDT which possibly fits into a register (or two)
-      // but it has to be a POD for that, i.e. should have no constructor or assignment operators
+      // but it has to be a POD for that. the cxxreturnudt flag is the
+      // compiler's answer, but old compilers never set it, the rust abi
+      // ignores it, and clang sets it on static methods returning a POD
       BOOL b;
-      if ( (pType->get_constructor          (&b) == S_OK) && b
-        || (pType->get_hasAssignmentOperator(&b) == S_OK) && b
-        || (pType->get_hasCastOperator      (&b) == S_OK) && b )
+      bool flagged = !use_rust_cc()
+                  && pdb_access->get_dia_version() >= 800
+                  && sym.get_isCxxReturnUdt(&b) == S_OK && b;
+      if ( flagged && sym.get_isStatic(&b) == S_OK && b )
+        flagged = false;
+      if ( flagged
+        || (pType->get_constructor          (&b) == S_OK) && b
+        || (pType->get_hasAssignmentOperator(&b) == S_OK) && b )
         complex = true;
     }
   }
